@@ -37,7 +37,10 @@ uses
 type
 
   { TMyThread }
-  TTileBuffer=array[0..255,0..255] of VecRecord;
+
+  TLineBuffer=array[0..2048] of VecRecord;
+  TTileBuffer=array[0..2048] of TLineBuffer;
+  (*TColor=r,g,b*)
 
   TMyThread = class(TThread)
   private
@@ -48,6 +51,10 @@ type
     procedure Execute; override;
   public
     TileBuffer:TTileBuffer;
+    LineBuffer:TLineBuffer;
+    w,h:integer;
+    yRender:integer;
+    procedure yCalc(ry:integer);
     constructor Create(CreateSuspended: boolean);
   end;
 
@@ -64,11 +71,13 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
+    
     procedure cmdRenderClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
   public
-  end;
+
+ end;
 
     
 var
@@ -91,6 +100,7 @@ procedure TMainForm.cmdRenderClick(Sender: TObject);
 var
   MyThread : TMyThread;
 begin
+
   imgRender.Width := strtoint(strWidth.Text);
   imgRender.Height := strtoint(strHeight.Text);
 //add
@@ -110,11 +120,24 @@ begin
       
   // Here the code initialises anything required before the threads starts executing
 
-  MyThread.Start;
-
+   MyThread.w:=imgRender.Width;
+   MyThread.h:=imgRender.Height;
+   MyThread.Start;
 end;
 
 { TMyThread }
+
+procedure TMyThread.yCalc(ry:integer);
+var
+  x:integer;
+BEGIN
+  yRender:=ry;
+  for x:=0 to w-1 do begin
+    LineBuffer[x].x:=ry*256/h;
+    LineBuffer[x].y:=x*256/w;
+    LIneBuffer[x].z:=128;
+  END;
+END;
 
 procedure TMyThread.ShowStatus;
 // this method is only called by Synchronize(@ShowStatus) and therefore
@@ -122,19 +145,30 @@ procedure TMyThread.ShowStatus;
 // The main thread can access GUI elements, for example MainForm.Caption.
 var
    x,y : integer;
-begin
+BEGIN
   MainForm.Caption := fStatusText;
-  IF DoneCalc THEN BEGIN
-     FOR y:=0 to 255 do begin
-	FOR x:=0 to 255 do begin
-	   MainForm.ImgRender.Canvas.Pixels[x,y]:= Trunc(TileBuffer[x,y].x)+
-                                                   Trunc(TileBuffer[x,y].y)*256+
-                                                   Trunc(TileBuffer[x,y].z)*256*256;
-	END;
-     END;
+  IF DoneCalc=FALSE THEN BEGIN
+    TileBuffer[yRender]:=LineBuffer;
+
+    FOR x:=0 to W-1 DO BEGIN
+      MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
+        Trunc(LineBuffer[x].x)+        //red
+        Trunc(LineBuffer[x].y*256)+    //green
+        Trunc(LineBuffer[x].z*256*256); //blue
+    END;
   END;
-  
-end;
+  IF DoneCalc THEN BEGIN
+     FOR y:=0 to h do begin
+      FOR x:=0 to w do begin
+	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
+	         Trunc(TileBuffer[y,x].x)+        //red
+             Trunc(TileBuffer[y,x].y)*256+    //green
+             Trunc(TileBuffer[y,x].z)*256*256;//blune
+	  END;
+    END;
+    MainForm.cmdRender.Enabled:=TRUE;
+  END;
+END;
 
 procedure TMyThread.Execute;
 var
@@ -145,22 +179,21 @@ begin
   Synchronize(@Showstatus);
   fStatusText := 'TMyThread Running ...';
   Synchronize(@ShowStatus);
-  for y:=0 to 255 do begin
-    for x:=0 to 255 do begin
-      TileBuffer[x,y].x:=y;
-      TileBuffer[x,y].y:=x;
-      TileBuffer[x,y].z:=128;
-    END;
-  END;
-    newStatus:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
-    DoneCalc:=TRUE;
+  for y:=0 to h-1 do begin
+    yCalc(y);
     Synchronize(@ShowStatus);
+  END;
+  newStatus:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
+  IF newStatus<>fStatusText then fStatusText:=newStatus;
+  DoneCalc:=TRUE;
+  Synchronize(@ShowStatus);
 end;
 
 constructor TMyThread.Create(CreateSuspended: boolean);
 begin
   FreeOnTerminate := True;
-   DoneCalc:=FALSE;
+  DoneCalc:=FALSE;
+  yRender:=0;
   inherited Create(CreateSuspended);
 end;
 
