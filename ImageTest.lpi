@@ -51,6 +51,11 @@
     <SearchPaths>
       <UnitOutputDirectory Value="/home/average/デスクトップ/FPC/ImageTest/out"/>
     </SearchPaths>
+    <CodeGeneration>
+      <Optimizations>
+        <OptimizationLevel Value="4"/>
+      </Optimizations>
+    </CodeGeneration>
     <Linking>
       <Options>
         <Win32>
@@ -58,5 +63,10 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-CfSSE42
+-CpATHLON64
+-dUseCThreads"/>
+    </Other>
   </CompilerOptions>
 </CONFIG>
