@@ -130,13 +130,17 @@ end;
 procedure TMyThread.yCalc(ry:integer);
 var
   x:integer;
+  cv:real;
 BEGIN
   yRender:=ry;
   for x:=0 to w-1 do begin
-    LineBuffer[x].x:=ry*256/h;
-    LineBuffer[x].y:=x*256/w;
-    LIneBuffer[x].z:=128;
-  END;
+    cv:=ry/h*256;
+    LineBuffer[x].x:=ry/h*256;
+    cv:=x;
+    cv:=(cv*256)/w;
+    LineBuffer[x].y:=x/w*256;
+    LineBuffer[x].z:=128;
+   END;
 END;
 
 procedure TMyThread.ShowStatus;
@@ -153,8 +157,8 @@ BEGIN
     FOR x:=0 to W-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
         Trunc(LineBuffer[x].x)+        //red
-        Trunc(LineBuffer[x].y*256)+    //green
-        Trunc(LineBuffer[x].z*256*256); //blue
+        Trunc(LineBuffer[x].y)*256+    //green
+        Trunc(LineBuffer[x].z)*256*256; //blue
     END;
   END;
   IF DoneCalc THEN BEGIN
