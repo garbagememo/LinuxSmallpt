@@ -18,11 +18,6 @@
  *                                                                         *
  ***************************************************************************
 
-  Abstract:
-    Demo to show, how to start a thread and how synchronize with the main
-    thread.
-    Important: The cthread unint must be added to the uses section of the .lpr
-               file. See multithreadingexample1.lpr.
 }
 unit MainUnit;
 
@@ -32,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uVect;
+  uVect,uModel;
 
 type
 
@@ -42,7 +37,7 @@ type
   TTileBuffer=array[0..2048] of TLineBuffer;
   (*TColor=r,g,b*)
 
-  TMyThread = class(TThread)
+  TMyThread = CLASS(TThread)
   private
     fStatusText: string;
     DoneCalc:boolean;
@@ -52,9 +47,14 @@ type
   public
     TileBuffer:TTileBuffer;
     LineBuffer:TLineBuffer;
-    w,h:integer;
+    wide,h,samps:integer;
+    cam:CameraRecord;
+    sph:TList;
     yRender:integer;
-    procedure yCalc(ry:integer);
+    PROCEDURE yCalc(ry:integer);
+    function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
+    function Radiance(r:RayRecord):VecRecord;
+    procedure LineCalc(ryAxis:integer);
     constructor Create(CreateSuspended: boolean);
   end;
 
@@ -94,6 +94,7 @@ begin
   DoubleBuffered := TRUE;
   TOP:=10;
   Left:=10;
+  InitScene;
 end;
 
 procedure TMainForm.cmdRenderClick(Sender: TObject);
@@ -120,8 +121,13 @@ begin
       
   // Here the code initialises anything required before the threads starts executing
 
-   MyThread.w:=imgRender.Width;
+   MyThread.wide:=imgRender.Width;
    MyThread.h:=imgRender.Height;
+   MyThread.samps:=StrToInt(StrSampleCount.text);
+   MyThread.cam.Setup( CreateVec(50, 52, 295.6),
+                       VecNorm(CreateVec(0,-0.042612,-1) ),
+                       MyThread.wide,MyThread.h,0.5135,140);
+
    MyThread.Start;
 end;
 
@@ -133,12 +139,12 @@ var
   cv:real;
 BEGIN
   yRender:=ry;
-  for x:=0 to w-1 do begin
+  for x:=0 to wide-1 do begin
     cv:=ry/h*256;
     LineBuffer[x].x:=ry/h*256;
     cv:=x;
-    cv:=(cv*256)/w;
-    LineBuffer[x].y:=x/w*256;
+    cv:=(cv*256)/wide;
+    LineBuffer[x].y:=x/wide*256;
     LineBuffer[x].z:=128;
    END;
 END;
@@ -154,7 +160,7 @@ BEGIN
   IF DoneCalc=FALSE THEN BEGIN
     TileBuffer[yRender]:=LineBuffer;
 
-    FOR x:=0 to W-1 DO BEGIN
+    FOR x:=0 to Wide-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
         Trunc(LineBuffer[x].x)+        //red
         Trunc(LineBuffer[x].y)*256+    //green
@@ -163,7 +169,7 @@ BEGIN
   END;
   IF DoneCalc THEN BEGIN
      FOR y:=0 to h do begin
-      FOR x:=0 to w do begin
+      FOR x:=0 to wide do begin
 	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
 	         Trunc(TileBuffer[y,x].x)+        //red
              Trunc(TileBuffer[y,x].y)*256+    //green
@@ -179,6 +185,7 @@ var
   newStatus : string;
    x,y	    : integer;
 begin
+
   fStatusText := 'TMyThread Starting ...';
   Synchronize(@Showstatus);
   fStatusText := 'TMyThread Running ...';
@@ -198,8 +205,196 @@ begin
   FreeOnTerminate := True;
   DoneCalc:=FALSE;
   yRender:=0;
+
+  sph:=TList.Create;
+  sph:=CopyScene(1);
   inherited Create(CreateSuspended);
 end;
+
+
+
+function TMyThread.Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
+var
+  n,d:real;
+  i:integer;
+begin
+  t:=INF;
+  for i:=0 to sph.count-1 do begin
+    d:=SphereClass(sph[i]).intersect(r);
+    if d<t THEN BEGIN
+      t:=d;
+      id:=i;
+    END;
+  end;
+  result:=(t<inf);
+END;
+
+
+function TMyThread.Radiance(r:RayRecord):VecRecord;
+var
+  id,i,tid:integer;
+  obj,s:SphereClass;
+  x,n,f,nl,u,v,w,d:VecRecord;
+  p,r1,r2,r2s,t:real;
+  into:boolean;
+  RefRay:RayRecord;
+  nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TTr,TP:real;
+  tDir:VecRecord;
+  EL,sw,su,sv,l:VecRecord;
+  cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
+  cl,cf,bcf:VecRecord;
+  E,depth:integer;
+BEGIN
+//writeln(' DebugY=',DebugY,' DebugX=',DebugX);
+  depth:=0;
+  id:=0;cl:=ZeroVec;cf:=CreateVec(1,1,1);E:=1;
+  WHILE (TRUE) DO BEGIN
+    Inc(depth);
+    IF intersect(r,t,id)=FALSE THEN BEGIN
+      result:=cl;
+      exit;
+    END;
+    obj:=SphereClass(sph[id]);
+    x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
+    IF n*r.d<0 THEN nl:=n ELSE nl:=n*-1;
+    IF (f.x>f.y)and(f.x>f.z) THEN
+      p:=f.x
+    ELSE IF f.y>f.z THEN
+      p:=f.y
+    ELSE
+      p:=f.z;
+    cl:=cl+VecMul(cf,obj.e*E);
+    IF (depth>5) THEN BEGIN
+      IF random<p THEN
+        f:=f/p
+      ELSE BEGIN
+        result:=cl;
+        exit;
+      END;
+    END;
+    bcf:=cf;cf:=VecMul(cf,f);
+    CASE obj.refl OF
+      DIFF:BEGIN
+ //       x:=x+nl*eps;(*ad hoc 突き抜け防止*)
+        r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
+        w:=nl;
+        IF abs(w.x)>0.1 THEN
+          u:=VecNorm(CreateVec(0,1,0)/w)
+        ELSE BEGIN
+          u:=VecNorm(CreateVec(1,0,0)/w );
+        END;
+        v:=w/u;
+        d := VecNorm(u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2));
+
+      // Loop over any lights
+        EL:=ZeroVec;
+        tid:=id;
+        for i:=0 to sph.count-1 do BEGIN
+          s:=SphereClass(sph[i]);
+          IF (i=tid) THEN BEGIN
+            continue;
+          END;
+          IF (s.e.x<=0) and  (s.e.y<=0) and (s.e.z<=0)  THEN continue; // skip non-lights
+          sw:=s.p-x;
+          tr:=sw*sw;  tr:=s.rad*s.rad/tr;
+          IF abs(sw.x)/sqrt(sw*sw)>1e-8 THEN
+            su:=VecNorm(CreateVec(0,1,0)/sw)
+          ELSE
+            su:=VecNorm(CreateVec(1,0,0)/sw);
+          sv:=sw/su;
+          IF tr>=1 THEN BEGIN
+            (*半球の内外=cos_aがマイナスとsin_aが＋、－で場合分け*)
+            (*半球内部なら乱反射した寄与全てを取ればよい・・はず*)
+            eps1:=2*pi*random;eps2:=random;eps2s:=sqrt(eps2);
+            l:=VecNorm(u*cos(eps1)*eps2s + v*sin(eps1)*eps2s + w*sqrt(1-eps2));
+            IF intersect(CreateRay(x,l),t,id) THEN BEGIN
+              IF id=i THEN BEGIN
+                tr:=l*nl;
+                EL:=EL+VecMul(f,s.e*tr);
+              END;
+            END;
+            CONTINUE;
+          END;
+          cos_a_max := sqrt(1-tr );
+          eps1 := random; eps2:=random;
+          cos_a := 1-eps1+eps1*cos_a_max;
+          sin_a := sqrt(1-cos_a*cos_a);
+          IF (1-2*random)<0 THEN sin_a:=-sin_a;
+          phi := 2*PI*eps2;
+          l := su*cos(phi)*sin_a + sv*sin(phi)*sin_a + sw*cos_a;
+          l:=VecNorm(l);
+          IF (intersect(CreateRay(x,l), t, id) ) THEN BEGIN
+            IF id=i THEN BEGIN  // shadow ray
+              omega := 2*PI*(1-cos_a_max);
+              tr:=l*nl;
+              IF tr<0 THEN tr:=0;
+              EL := EL + VecMul(f,s.e*tr*omega)*M_1_PI;  // 1/pi for brdf
+            END;
+          END;
+        END;(*for*)
+        cl:= cl+VecMul(bcf,(obj.e*E+EL) );
+        E:=0;
+        r:=CreateRay(x,d)
+      END;(*DIFF*)
+      SPEC:BEGIN
+        cl:=cl+VecMul(bcf,obj.e*E);
+        E:=1;
+        r:=CreateRay(x,r.d-n*2*(n*r.d));
+      END;(*SPEC*)
+      REFR:BEGIN
+        RefRay:=CreateRay(x,r.d-n*2*(n*r.d) );
+        into:= (n*nl>0);
+        nc:=1;nt:=1.5; IF into THEN nnt:=nc/nt ELSE nnt:=nt/nc; ddn:=r.d*nl;
+        cos2t:=1-nnt*nnt*(1-ddn*ddn);
+        IF cos2t<0 THEN BEGIN   // Total internal reflection
+          cl:=cl+VecMul(bcf,obj.e*E);
+          E:=1;
+          r:=RefRay;
+          continue;
+        END;
+        IF into THEN q:=1 ELSE q:=-1;
+        tdir := VecNorm(r.d*nnt - n*(q*(ddn*nnt+sqrt(cos2t))));
+        IF into THEN Q:=-ddn ELSE Q:=tdir*n;
+        a:=nt-nc; b:=nt+nc; R0:=a*a/(b*b); c := 1-Q;
+        Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
+        IF random<p THEN BEGIN// 反射
+          cf:=cf*RP;
+          cl:=cl+VecMul(bcf,obj.e*E);
+          E:=1;
+          r:=RefRay;
+        END
+        ELSE BEGIN//屈折
+          cf:=cf*TP;
+          cl:=cl+VecMul(bcf,obj.e*E);
+          E:=1;
+          r:=CreateRay(x,tdir);
+        END
+      END;(*REFR*)
+    END;(*CASE*)
+  END;(*WHILE LOOP *)
+END;
+
+procedure TMyThread.LineCalc(ryAxis:integer);
+var
+  x,sx,sy,s:integer;
+  r,temp,pixel:VecRecord;
+BEGIN
+  FOR x:=0 to wide-1 do begin
+     r:=BackGroundColor;
+     pixel:=BackGroundColor;
+     FOR sy:=0 to 1 DO BEGIN
+       FOR sx:=0 TO 1 DO BEGIN
+         FOR S:=0 TO samps-1 DO BEGIN
+           r:=r+Radiance(cam.Ray(x,ryAxis,sx,sy))/samps;
+         END;
+         temp:=ClampVector(r);
+         temp:=temp*0.24;
+         Pixel:=Pixel+temp;
+       END;(*sx*)
+     END;(*sy*)
+  end;(*x*)
+END;
+
 
 end.
 
