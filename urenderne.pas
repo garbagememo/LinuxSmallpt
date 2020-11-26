@@ -47,9 +47,10 @@ type
   public
     LineBuffer:TLineBuffer;
     wide,h,samps:integer;
+    ThreadNum:integer;
+    yOffset:integer;
     sph:TList;
     yRender:integer;
-    PROCEDURE yCalc(ry:integer);
     function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
     function Radiance(r:RayRecord):VecRecord;
     procedure LineCalc(ryAxis:integer);
@@ -97,7 +98,7 @@ end;
 
 procedure TMainForm.cmdRenderClick(Sender: TObject);
 var
-  MyThread : TMyThread;
+  MyThread,MyThread2 : TMyThread;
 begin
   Randomize;
   imgRender.Width := strtoint(strWidth.Text);
@@ -116,33 +117,30 @@ begin
   MyThread := TMyThread.Create(True); // With the True parameter it doesn't start automatically
   if Assigned(MyThread.FatalException) then
     raise MyThread.FatalException;
-      
+
+  MyThread2 := TMyThread.Create(True); // With the True parameter it doesn't start automatically
+  if Assigned(MyThread2.FatalException) then
+    raise MyThread2.FatalException;
   // Here the code initialises anything required before the threads starts executing
 
    MyThread.wide:=imgRender.Width;
    MyThread.h:=imgRender.Height;
    MyThread.samps:=StrToInt(StrSampleCount.text);
+   MyThread.ThreadNum:=2;
+   MyThread.yOffset:=0;
+
+   MyThread2.wide:=imgRender.Width;
+   MyThread2.h:=imgRender.Height;
+   MyThread2.samps:=StrToInt(StrSampleCount.text);
+   MyThread2.ThreadNum:=2;
+   MyThread2.yOffset:=1;
 
    MyThread.Start;
+   MyThread2.Start;
 end;
 
 { TMyThread }
 
-procedure TMyThread.yCalc(ry:integer);
-var
-  x:integer;
-  cv:real;
-BEGIN
-  yRender:=ry;
-  for x:=0 to wide-1 do begin
-    cv:=ry/h*256;
-    LineBuffer[x].x:=ry/h*256;
-    cv:=x;
-    cv:=(cv*256)/wide;
-    LineBuffer[x].y:=x/wide*256;
-    LineBuffer[x].z:=128;
-   END;
-END;
 
 procedure TMyThread.ShowStatus;
 // this method is only called by Synchronize(@ShowStatus) and therefore
@@ -155,23 +153,21 @@ BEGIN
   IF DoneCalc=FALSE THEN BEGIN
     MainForm.TileBuffer[yRender]:=LineBuffer;
     FOR x:=0 to Wide-1 DO BEGIN
-      MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
+ {     MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
           ColToByte(LineBuffer[x].x)+        //red
           ColToByte(LineBuffer[x].y)*256+    //green
           ColToByte(LineBuffer[x].z)*256*256; //blue
-    END;
+  }  END;
   END;
   IF DoneCalc THEN BEGIN
-{
      FOR y:=0 to h do begin
       FOR x:=0 to wide do begin
 	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
-	       ColToByte(TileBuffer[y,x].x)+        //red
-             ColToByte(TileBuffer[y,x].y)*256+    //green
-             ColToByte(TileBuffer[y,x].z)*256*256;//blune
+	       ColToByte(MainForm.TileBuffer[y,x].x)+        //red
+             ColToByte(MainForm.TileBuffer[y,x].y)*256+    //green
+             ColToByte(MainForm.TileBuffer[y,x].z)*256*256;//blune
 	  END;
     END;
-}
     MainForm.cmdRender.Enabled:=TRUE;
   END;
 END;
@@ -199,7 +195,8 @@ begin
   cy:=VecNorm(cy);
   cy:= cy* 0.5135;
 
-  for y:=0 to h-1 do begin
+  y:=yOffset;
+  while y<h do begin
     for x:=0 to wide-1 do begin
       for sy:=0 to 1 do begin
         r:=CreateVec(0, 0, 0);
@@ -240,6 +237,7 @@ begin
      end;(*x*)
      yRender:=y;
      Synchronize(@ShowStatus);
+     y:=y+ThreadNum;
   END;(*y*)
   newStatus:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
   IF newStatus<>fStatusText then fStatusText:=newStatus;
