@@ -65,7 +65,7 @@
     </Linking>
     <Other>
       <CustomOptions Value="-CfSSE42
--CpATHLON64
+-CpCOREI
 -dUseCThreads"/>
     </Other>
   </CompilerOptions>

@@ -51,6 +51,7 @@ type
     yOffset:integer;
     sph:TList;
     yRender:integer;
+    startTime : Int64;
     function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
     function Radiance(r:RayRecord):VecRecord;
     constructor Create(CreateSuspended: boolean);
@@ -61,6 +62,8 @@ type
   TMainForm = class(TForm)
     cmdSave: TButton;
     cmdRender: TButton;
+    Label5: TLabel;
+    Label6: TLabel;
     SaveDlg: TSaveDialog;
     StrWidth: TEdit;
     StrHeight: TEdit;
@@ -80,6 +83,7 @@ type
   public
     ThreadNum:integer;
     samps:integer;
+    StartTime:Integer;
     ThreadList:TList;
     TileBuffer:TTileBuffer;
     function isAllDone:boolean;
@@ -94,6 +98,27 @@ implementation
 {$R *.lfm}
 
 { TMainForm }
+
+
+FUNCTION SecToTime(Sec : INTEGER) : STRING;
+VAR
+  H, M, S : STRING;
+  ZH, ZM, ZS : INTEGER;
+BEGIN
+  ZH := Sec DIV 3600;
+  ZM := Sec DIV 60 - ZH * 60;
+  ZS := Sec - (ZH * 3600 + ZM * 60);
+  H := IntToStr(ZH);
+  IF (H = '0') THEN
+    H := '00';
+  M := IntToStr(ZM);
+  IF (M = '0') THEN
+    M := '00';
+  S := IntToStr(ZS);
+  IF (S = '0') THEN
+    S := '00';
+  Result := H + ':' + M + ':' + S;
+END;
 
 function TMainForm.isAllDone:boolean;
 var
@@ -141,7 +166,7 @@ begin
 
   cmdRender.Enabled:=FALSE;
   ClientWidth := imgRender.Left + 5 + imgRender.Width;
-  IF (ImgRender.Top+5+ImgRender.Height) >280 THEN
+  IF (ImgRender.Top+5+ImgRender.Height) >306 THEN
     ClientHeight := imgRender.Top + 5 + imgRender.Height;
   ThreadList:=TList.Create;
   FOR i:=0 TO ThreadNum-1 DO BEGIN
@@ -156,6 +181,8 @@ begin
     MyThread.DoneCalc:=FALSE;
     ThreadList.Add(MyThread);
   end;
+  StartTime:=GetTickCount64;
+ 
   FOR i:=0 TO ThreadNum-1 DO BEGIN
     TMyThread(ThreadList[i]).Start;
   end;
@@ -181,14 +208,15 @@ BEGIN
   IF DoneCalc=FALSE THEN BEGIN
     MainForm.TileBuffer[yRender]:=LineBuffer;
     FOR x:=0 to Wide-1 DO BEGIN
- {     MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
+      MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
           ColToByte(LineBuffer[x].x)+        //red
           ColToByte(LineBuffer[x].y)*256+    //green
           ColToByte(LineBuffer[x].z)*256*256; //blue
-  }  END;
+    END;
+    MainForm.Label6.Caption:=SecToTime((GetTickCount64 - MainForm.startTime) DIV 1000);
   END;
   IF MainForm.isAllDone THEN BEGIN
-     FOR y:=0 to h do begin
+ (*    FOR y:=0 to h do begin
       FOR x:=0 to wide do begin
 	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
 	       ColToByte(MainForm.TileBuffer[y,x].x)+        //red
@@ -196,7 +224,7 @@ BEGIN
              ColToByte(MainForm.TileBuffer[y,x].z)*256*256;//blune
 	  END;
     END;
-    MainForm.cmdRender.Enabled:=TRUE;
+ *)   MainForm.cmdRender.Enabled:=TRUE;
     MainForm.Caption:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
   END;
 END;

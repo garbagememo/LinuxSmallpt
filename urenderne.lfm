@@ -1,12 +1,12 @@
 object MainForm: TMainForm
   Left = 104
-  Height = 270
+  Height = 306
   Top = 162
   Width = 537
   HorzScrollBar.Page = 407
   VertScrollBar.Page = 72
   Caption = 'MainForm'
-  ClientHeight = 270
+  ClientHeight = 306
   ClientWidth = 537
   OnCreate = FormCreate
   LCLVersion = '2.0.0.4'
@@ -77,14 +77,14 @@ object MainForm: TMainForm
   object cmdRender: TButton
     Left = 96
     Height = 32
-    Top = 168
+    Top = 208
     Width = 96
     Caption = 'Render'
     OnClick = cmdRenderClick
     TabOrder = 4
   end
   object ImgRender: TImage
-    Left = 208
+    Left = 200
     Height = 242
     Top = 8
     Width = 322
@@ -92,14 +92,30 @@ object MainForm: TMainForm
   object cmdSave: TButton
     Left = 94
     Height = 31
-    Top = 208
+    Top = 248
     Width = 98
     Caption = 'Save'
     OnClick = cmdSaveClick
     TabOrder = 5
   end
+  object Label5: TLabel
+    Left = 43
+    Height = 19
+    Top = 176
+    Width = 60
+    Caption = '経過時間'
+    ParentColor = False
+  end
+  object Label6: TLabel
+    Left = 112
+    Height = 19
+    Top = 176
+    Width = 45
+    Caption = 'Label6'
+    ParentColor = False
+  end
   object SaveDlg: TSaveDialog
     left = 32
-    top = 208
+    top = 248
   end
 end
