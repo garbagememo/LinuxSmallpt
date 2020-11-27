@@ -53,14 +53,15 @@ type
     yRender:integer;
     function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
     function Radiance(r:RayRecord):VecRecord;
-    procedure LineCalc(ryAxis:integer);
     constructor Create(CreateSuspended: boolean);
   end;
 
   { TMainForm }
 
   TMainForm = class(TForm)
+    cmdSave: TButton;
     cmdRender: TButton;
+    SaveDlg: TSaveDialog;
     StrWidth: TEdit;
     StrHeight: TEdit;
     StrSampleCount: TEdit;
@@ -72,10 +73,16 @@ type
     Label4: TLabel;
     
     procedure cmdRenderClick(Sender: TObject);
+    procedure cmdSaveClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure SaveDlgClick(Sender: TObject);
   private
   public
+    ThreadNum:integer;
+    samps:integer;
+    ThreadList:TList;
     TileBuffer:TTileBuffer;
+    function isAllDone:boolean;
   end;
 
     
@@ -88,6 +95,19 @@ implementation
 
 { TMainForm }
 
+function TMainForm.isAllDone:boolean;
+var
+  i:integer;
+begin
+  isAllDone:=TRUE;
+  for i:=0 to ThreadNum-1 do begin
+     IF TMyThread(ThreadList[i]).DoneCalc=FALSE THEN BEGIN
+       isAllDone:=FALSE;
+       exit;
+     end;
+  end;
+end;
+
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
   DoubleBuffered := TRUE;
@@ -96,13 +116,22 @@ begin
   InitScene;
 end;
 
+procedure TMainForm.SaveDlgClick(Sender: TObject);
+begin
+  IF (SaveDlg.Execute) THEN
+    imgRender.Picture.SaveToFile(SaveDlg.FileName);
+end;
+
 procedure TMainForm.cmdRenderClick(Sender: TObject);
 var
   MyThread,MyThread2 : TMyThread;
+  i:integer;
 begin
   Randomize;
   imgRender.Width := strtoint(strWidth.Text);
   imgRender.Height := strtoint(strHeight.Text);
+  ThreadNum:=StrToInt(StrThreadCount.Text);
+  samps:=StrToInt(StrSampleCount.Text);
 //add
   imgRender.Picture.Bitmap.Width:=imgRender.Width;
   imgRender.Picture.Bitmap.Height:=imgRender.Height;
@@ -112,31 +141,29 @@ begin
 
   cmdRender.Enabled:=FALSE;
   ClientWidth := imgRender.Left + 5 + imgRender.Width;
-  ClientHeight := imgRender.Top + 5 + imgRender.Height;
+  IF (ImgRender.Top+5+ImgRender.Height) >280 THEN
+    ClientHeight := imgRender.Top + 5 + imgRender.Height;
+  ThreadList:=TList.Create;
+  FOR i:=0 TO ThreadNum-1 DO BEGIN
+    MyThread := TMyThread.Create(True); // With the True parameter it doesn't start automatically
+    if Assigned(MyThread.FatalException) then
+      raise MyThread.FatalException;
+    MyThread.wide:=imgRender.Width;
+    MyThread.h:=imgRender.Height;
+    MyThread.samps:=StrToInt(StrSampleCount.text);
+    MyThread.ThreadNum:=ThreadNum;
+    MyThread.yOffset:=i;
+    MyThread.DoneCalc:=FALSE;
+    ThreadList.Add(MyThread);
+  end;
+  FOR i:=0 TO ThreadNum-1 DO BEGIN
+    TMyThread(ThreadList[i]).Start;
+  end;
+end;
 
-  MyThread := TMyThread.Create(True); // With the True parameter it doesn't start automatically
-  if Assigned(MyThread.FatalException) then
-    raise MyThread.FatalException;
-
-  MyThread2 := TMyThread.Create(True); // With the True parameter it doesn't start automatically
-  if Assigned(MyThread2.FatalException) then
-    raise MyThread2.FatalException;
-  // Here the code initialises anything required before the threads starts executing
-
-   MyThread.wide:=imgRender.Width;
-   MyThread.h:=imgRender.Height;
-   MyThread.samps:=StrToInt(StrSampleCount.text);
-   MyThread.ThreadNum:=2;
-   MyThread.yOffset:=0;
-
-   MyThread2.wide:=imgRender.Width;
-   MyThread2.h:=imgRender.Height;
-   MyThread2.samps:=StrToInt(StrSampleCount.text);
-   MyThread2.ThreadNum:=2;
-   MyThread2.yOffset:=1;
-
-   MyThread.Start;
-   MyThread2.Start;
+procedure TMainForm.cmdSaveClick(Sender: TObject);
+begin
+  IF SaveDlg.Execute THEN ImgRender.Picture.SaveToFile(SaveDlg.Filename);
 end;
 
 { TMyThread }
@@ -148,6 +175,7 @@ procedure TMyThread.ShowStatus;
 // The main thread can access GUI elements, for example MainForm.Caption.
 var
    x,y : integer;
+   newStatus : string;
 BEGIN
   MainForm.Caption := fStatusText;
   IF DoneCalc=FALSE THEN BEGIN
@@ -159,7 +187,7 @@ BEGIN
           ColToByte(LineBuffer[x].z)*256*256; //blue
   }  END;
   END;
-  IF DoneCalc THEN BEGIN
+  IF MainForm.isAllDone THEN BEGIN
      FOR y:=0 to h do begin
       FOR x:=0 to wide do begin
 	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
@@ -169,11 +197,11 @@ BEGIN
 	  END;
     END;
     MainForm.cmdRender.Enabled:=TRUE;
+    MainForm.Caption:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
   END;
 END;
 procedure TMyThread.Execute;
 var
-  newStatus : string;
   x,y,sx,sy,s:integer;
   temp,d       : VecRecord;
   r1,r2,dx,dy  : real;
@@ -183,8 +211,6 @@ var
 begin
   fStatusText := 'TMyThread Starting ...';
   Synchronize(@Showstatus);
-  fStatusText := 'TMyThread Running ...';
-  Synchronize(@ShowStatus);
 
   camPosition:=CreateVec(50, 52, 295.6);
   camDirection:=CreateVec(0, -0.042612, -1);
@@ -194,8 +220,9 @@ begin
   cy:= cx/ cam.d;
   cy:=VecNorm(cy);
   cy:= cy* 0.5135;
-
   y:=yOffset;
+  fStatusText := 'TMyThread Running ...';
+  Synchronize(@ShowStatus);
   while y<h do begin
     for x:=0 to wide-1 do begin
       for sy:=0 to 1 do begin
@@ -239,8 +266,6 @@ begin
      Synchronize(@ShowStatus);
      y:=y+ThreadNum;
   END;(*y*)
-  newStatus:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
-  IF newStatus<>fStatusText then fStatusText:=newStatus;
   DoneCalc:=TRUE;
   Synchronize(@ShowStatus);
  end;
@@ -440,29 +465,7 @@ BEGIN
   END;(*WHILE LOOP *)
 END;
 
-procedure TMyThread.LineCalc(ryAxis:integer);
-var
-  x,sx,sy,s:integer;
-  r,temp,pixel:VecRecord;
-BEGIN
-  FOR x:=0 to wide-1 do begin
-     r:=BackGroundColor;
-     LineBuffer[x]:=BackGroundColor;
-     FOR sy:=0 to 1 DO BEGIN
-       FOR sx:=0 TO 1 DO BEGIN
-         FOR s:=0 TO samps-1 DO BEGIN
- //          r:=r+Radiance(cam.Ray(x,ryAxis,sx,sy),0)/samps;
-         END;
-         temp:=ClampVector(r);
-         temp:=temp*0.24;
-         temp:= temp/ samps;
-         r:= r+temp;
 
-         LineBuffer[x]:=LineBuffer[x]+temp;
-       END;(*sx*)
-     END;(*sy*)
-  end;(*x*)
-END;
 
 
 end.
