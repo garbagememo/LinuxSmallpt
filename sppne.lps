@@ -8,7 +8,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
         <CursorPos Y="14"/>
-        <UsageCount Value="29"/>
+        <UsageCount Value="30"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
@@ -18,9 +18,9 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="200"/>
-        <CursorPos X="78" Y="208"/>
-        <UsageCount Value="29"/>
+        <TopLine Value="225"/>
+        <CursorPos X="48" Y="230"/>
+        <UsageCount Value="30"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
@@ -39,6 +39,8 @@
       <Unit4>
         <Filename Value="uVect.pas"/>
         <EditorIndex Value="2"/>
+        <TopLine Value="175"/>
+        <CursorPos Y="171"/>
         <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit4>
@@ -58,7 +60,7 @@
         <Loaded Value="True"/>
       </Unit6>
     </Units>
-    <JumpHistory Count="13" HistoryIndex="12">
+    <JumpHistory Count="17" HistoryIndex="16">
       <Position1>
         <Filename Value="uModel.pas"/>
       </Position1>
@@ -110,6 +112,22 @@
         <Filename Value="rendunit.pas"/>
         <Caret Line="82" Column="3" TopLine="82"/>
       </Position13>
+      <Position14>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="208" Column="78" TopLine="200"/>
+      </Position14>
+      <Position15>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="30" Column="20" TopLine="27"/>
+      </Position15>
+      <Position16>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="239" Column="54" TopLine="237"/>
+      </Position16>
+      <Position17>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="242" Column="35" TopLine="237"/>
+      </Position17>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>

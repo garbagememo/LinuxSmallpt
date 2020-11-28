@@ -27,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uVect,uModel;
+  uVect,uModel,math;
 
 type
 
@@ -219,20 +219,21 @@ procedure TMyThread.ShowStatus;
 var
    x,y : integer;
    newStatus : string;
-BEGIN
+ BEGIN
   MainForm.Caption := fStatusText;
   IF DoneCalc=FALSE THEN BEGIN
     MainForm.TileBuffer[yRender]:=LineBuffer;
     FOR x:=0 to Wide-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
-          ColToByte(LineBuffer[x].x)+        //red
-          ColToByte(LineBuffer[x].y)*256+    //green
-          ColToByte(LineBuffer[x].z)*256*256; //blue
-    END;
+ 	         ColToByte(LineBuffer[x].x)+        //red
+             ColToByte(LineBuffer[x].y)*256+   //green
+             ColToByte(LineBuffer[x].z)*256*256;  //blune
+   END;
     MainForm.Label6.Caption:=SecToTime((GetTickCount64 - MainForm.startTime) DIV 1000);
   END;
   IF MainForm.isAllDone THEN BEGIN
- (*    FOR y:=0 to h do begin
+{
+    FOR y:=0 to h do begin
       FOR x:=0 to wide do begin
 	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
 	       ColToByte(MainForm.TileBuffer[y,x].x)+        //red
@@ -240,7 +241,8 @@ BEGIN
              ColToByte(MainForm.TileBuffer[y,x].z)*256*256;//blune
 	  END;
     END;
- *)   MainForm.cmdRender.Enabled:=TRUE;
+}
+    MainForm.cmdRender.Enabled:=TRUE;
     MainForm.Caption:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
   END;
 END;
