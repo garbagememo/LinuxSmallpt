@@ -5,7 +5,7 @@
 INTERFACE
 
 USES
-    sysutils,math,WriteBMP;
+    sysutils,math;
 TYPE
     RefType=(DIFF,SPEC,REFR);// material types, used in radiance()
 {
@@ -22,7 +22,6 @@ TYPE
    function CreateRay(o_,d_:VecRecord):RayRecord;
 
    function ClampVector(v:VecRecord):VecRecord;
-   function ColToRGB(v:VecRecord):rgbColor;
 const
    BackGroundColor:VecRecord = (x:0;y:0;z:0);
    ZeroVec:VecRecord = (x:0;y:0;z:0);
@@ -184,12 +183,6 @@ end;
 function ColToByte(x:real):byte;inline;
 begin
     result:=trunc(power(clamp(x),1/2.2)*255+0.5);
-end;
-function ColToRGB(v:VecRecord):rgbColor;
-begin
-    result.r:=ColToByte(v.x);
-    result.g:=ColToByte(v.y);
-    result.b:=ColToByte(v.z);
 end;
 
 BEGIN

@@ -17,9 +17,8 @@
         <ComponentName Value="MainForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="225"/>
-        <CursorPos X="48" Y="230"/>
+        <TopLine Value="471"/>
+        <CursorPos X="33" Y="479"/>
         <UsageCount Value="30"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -38,9 +37,10 @@
       </Unit3>
       <Unit4>
         <Filename Value="uVect.pas"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="175"/>
-        <CursorPos Y="171"/>
+        <TopLine Value="39"/>
+        <CursorPos X="18" Y="39"/>
         <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit4>
@@ -54,13 +54,13 @@
       <Unit6>
         <Filename Value="uModel.pas"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="27"/>
-        <CursorPos X="3" Y="14"/>
+        <TopLine Value="135"/>
+        <CursorPos X="50" Y="142"/>
         <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit6>
     </Units>
-    <JumpHistory Count="17" HistoryIndex="16">
+    <JumpHistory Count="29" HistoryIndex="28">
       <Position1>
         <Filename Value="uModel.pas"/>
       </Position1>
@@ -128,6 +128,54 @@
         <Filename Value="rendunit.pas"/>
         <Caret Line="242" Column="35" TopLine="237"/>
       </Position17>
+      <Position18>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="230" Column="48" TopLine="225"/>
+      </Position18>
+      <Position19>
+        <Filename Value="uVect.pas"/>
+        <Caret Line="32" Column="79" TopLine="19"/>
+      </Position19>
+      <Position20>
+        <Filename Value="uModel.pas"/>
+        <Caret Line="103" Column="34" TopLine="95"/>
+      </Position20>
+      <Position21>
+        <Filename Value="uModel.pas"/>
+        <Caret Line="116" Column="62" TopLine="109"/>
+      </Position21>
+      <Position22>
+        <Filename Value="uModel.pas"/>
+        <Caret Line="129" Column="21" TopLine="121"/>
+      </Position22>
+      <Position23>
+        <Filename Value="uModel.pas"/>
+        <Caret Line="136" Column="3" TopLine="128"/>
+      </Position23>
+      <Position24>
+        <Filename Value="uModel.pas"/>
+        <Caret Line="142" Column="50" TopLine="135"/>
+      </Position24>
+      <Position25>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="228" Column="12" TopLine="221"/>
+      </Position25>
+      <Position26>
+        <Filename Value="uVect.pas"/>
+        <Caret Line="116" Column="27" TopLine="106"/>
+      </Position26>
+      <Position27>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="473" Column="36" TopLine="465"/>
+      </Position27>
+      <Position28>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="479" Column="33" TopLine="471"/>
+      </Position28>
+      <Position29>
+        <Filename Value="rendunit.pas"/>
+        <Caret Line="473" Column="36" TopLine="465"/>
+      </Position29>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>

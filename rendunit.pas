@@ -27,7 +27,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uVect,uModel,math;
+  uVect,uModel;
 
 type
 
@@ -226,8 +226,8 @@ var
     FOR x:=0 to Wide-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
  	         ColToByte(LineBuffer[x].x)+        //red
-             ColToByte(LineBuffer[x].y)*256+   //green
-             ColToByte(LineBuffer[x].z)*256*256;  //blune
+                 ColToByte(LineBuffer[x].y)*256+   //green
+                 ColToByte(LineBuffer[x].z)*256*256;  //blune
    END;
     MainForm.Label6.Caption:=SecToTime((GetTickCount64 - MainForm.startTime) DIV 1000);
   END;
