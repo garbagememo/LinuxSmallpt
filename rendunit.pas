@@ -19,7 +19,7 @@
  ***************************************************************************
 
 }
-unit rendunit;
+unit RendUnit;
 
 {$mode objfpc}{$H+}
 
@@ -31,13 +31,12 @@ uses
 
 type
 
-  { TMyThread }
+  { TRenderThread }
 
   TLineBuffer=array[0..1980] of VecRecord;
-  TTileBuffer=array[0..1980] of TLineBuffer;
   (*TColor=r,g,b*)
 
-  TMyThread = CLASS(TThread)
+  TRenderThread = CLASS(TThread)
   private
     fStatusText: string;
     DoneCalc:boolean;
@@ -47,24 +46,26 @@ type
   public
     LineBuffer:TLineBuffer;
     wide,h,samps:integer;
-    ThreadNum:integer;
-    yOffset:integer;
+    CamR:CameraRecord;
     sph:TList;
     yRender:integer;
-    startTime : Int64;
     function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
-    function Radiance(r:RayRecord):VecRecord;
+    function Radiance(r:RayRecord;depth:integer):VecRecord;virtual;
     constructor Create(CreateSuspended: boolean);
   end;
+  TNERenderThread = CLASS(TRenderThread)
+    function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
+  END;
 
   { TMainForm }
 
   TMainForm = class(TForm)
     cmdSave: TButton;
     cmdRender: TButton;
+    AlgolCombo: TComboBox;
+    Aloglthm: TLabel;
+    Model: TLabel;
     SceneCombo: TComboBox;
-    Label5: TLabel;
-    Label6: TLabel;
     SaveDlg: TSaveDialog;
     StrWidth: TEdit;
     StrHeight: TEdit;
@@ -75,21 +76,27 @@ type
     Label2: TLabel;
     Label3: TLabel;
     Label4: TLabel;
-    
+    Label5: TLabel;
+    lblTime: TLabel;
+
+    procedure AlgolComboChange(Sender: TObject);
     procedure cmdRenderClick(Sender: TObject);
     procedure cmdSaveClick(Sender: TObject);
     procedure SceneComboChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SaveDlgClick(Sender: TObject);
   private
-   ComboIndex:Integer;
+    ModelIndex:Integer;
+    AlgolIndex:integer;
+    MinimamHeight:integer;
   public
     ThreadNum:integer;
     samps:integer;
-    StartTime:Integer;
+    StartTime:Int64;
     ThreadList:TList;
-    TileBuffer:TTileBuffer;
+    yAxis:integer;
     function isAllDone:boolean;
+    function GetYAxis:integer;
   end;
 
     
@@ -129,11 +136,17 @@ var
 begin
   isAllDone:=TRUE;
   for i:=0 to ThreadNum-1 do begin
-     IF TMyThread(ThreadList[i]).DoneCalc=FALSE THEN BEGIN
+     IF TRenderThread(ThreadList[i]).DoneCalc=FALSE THEN BEGIN
        isAllDone:=FALSE;
        exit;
      end;
   end;
+end;
+
+function TMainForm.GetYAxis:integer;
+begin
+   yAxis:=yAxis+1;
+   result:=yAxis;
 end;
 
 procedure TMainForm.FormCreate(Sender: TObject);
@@ -147,7 +160,12 @@ begin
   for i:=0 to sc.count-1 do
     SceneCombo.Items.Add(ScName[i]);
   SceneCombo.ItemIndex:=1;
-  ComboIndex:=1;
+  ModelIndex:=1;
+  AlgolCombo.Items.Add('Original');
+  AlgolCombo.Items.Add('Next Event');
+  AlgolCombo.ItemIndex:=1;
+  AlgolIndex:=1;
+   MinimamHeight:=Height;
 end;
 
 procedure TMainForm.SaveDlgClick(Sender: TObject);
@@ -158,9 +176,12 @@ end;
 
 procedure TMainForm.cmdRenderClick(Sender: TObject);
 var
-  MyThread,MyThread2 : TMyThread;
+  RenderThread: TRenderThread;
   i:integer;
 begin
+  IF Assigned(ThreadList) THEN BEGIN
+     ThreadList.Destroy;
+  END;
   Randomize;
   imgRender.Width := strtoint(strWidth.Text);
   imgRender.Height := strtoint(strHeight.Text);
@@ -175,27 +196,39 @@ begin
 
   cmdRender.Enabled:=FALSE;
   ClientWidth := imgRender.Left + 5 + imgRender.Width;
-  IF (ImgRender.Top+5+ImgRender.Height) >306 THEN
+  IF (ImgRender.Top+5+ImgRender.Height) >MinimamHeight THEN
     ClientHeight := imgRender.Top + 5 + imgRender.Height;
   ThreadList:=TList.Create;
+  yAxis:=-1;
   FOR i:=0 TO ThreadNum-1 DO BEGIN
-    MyThread := TMyThread.Create(True); // With the True parameter it doesn't start automatically
-    if Assigned(MyThread.FatalException) then
-      raise MyThread.FatalException;
-    MyThread.wide:=imgRender.Width;
-    MyThread.h:=imgRender.Height;
-    MyThread.samps:=StrToInt(StrSampleCount.text);
-    MyThread.ThreadNum:=ThreadNum;
-    MyThread.yOffset:=i;
-    MyThread.DoneCalc:=FALSE;
-    MyThread.sph:=CopyScene(ComboIndex);
-    ThreadList.Add(MyThread);
+    IF AlgolIndex=1 then
+      RenderThread:=TNERenderThread.Create(TRUE);
+    IF AlgolIndex=0 THEN
+      RenderThread:=TRenderThread.Create(True);
+     // With the True parameter it doesn't start automatically
+    if Assigned(RenderThread.FatalException) then
+      raise RenderThread.FatalException;
+    RenderThread.wide:=imgRender.Width;
+    RenderThread.h:=imgRender.Height;
+    RenderThread.samps:=StrToInt(StrSampleCount.text);
+    RenderThread.yRender:=GetYAxis;
+    RenderThread.DoneCalc:=FALSE;
+    RenderThread.sph:=CopyScene(ModelIndex);
+    RenderThread.CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),
+                        RenderThread.wide,RenderThread.h,
+                        0.5135,140);
+    ThreadList.Add(RenderThread);
   end;
   StartTime:=GetTickCount64;
  
   FOR i:=0 TO ThreadNum-1 DO BEGIN
-    TMyThread(ThreadList[i]).Start;
+    TRenderThread(ThreadList[i]).Start;
   end;
+end;
+
+procedure TMainForm.AlgolComboChange(Sender: TObject);
+begin
+  AlgolIndex:=AlgolCombo.ItemIndex;
 end;
 
 procedure TMainForm.cmdSaveClick(Sender: TObject);
@@ -205,119 +238,74 @@ end;
 
 procedure TMainForm.SceneComboChange(Sender: TObject);
 begin
-  ComboIndex:=SceneCombo.ItemIndex;
+  ModelIndex:=SceneCombo.ItemIndex;
 end;
 
 
-{ TMyThread }
+{ TRenderThread }
 
 
-procedure TMyThread.ShowStatus;
+procedure TRenderThread.ShowStatus;
 // this method is only called by Synchronize(@ShowStatus) and therefore
 // executed by the main thread
 // The main thread can access GUI elements, for example MainForm.Caption.
 var
-   x,y : integer;
-   newStatus : string;
- BEGIN
+  x : integer;
+BEGIN
   MainForm.Caption := fStatusText;
   IF DoneCalc=FALSE THEN BEGIN
-    MainForm.TileBuffer[yRender]:=LineBuffer;
     FOR x:=0 to Wide-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
  	         ColToByte(LineBuffer[x].x)+        //red
-                 ColToByte(LineBuffer[x].y)*256+   //green
-                 ColToByte(LineBuffer[x].z)*256*256;  //blune
-   END;
-    MainForm.Label6.Caption:=SecToTime((GetTickCount64 - MainForm.startTime) DIV 1000);
+             ColToByte(LineBuffer[x].y)*256+   //green
+             ColToByte(LineBuffer[x].z)*256*256;  //blune
+    END;
+    MainForm.LblTime.Caption:=SecToTime((GetTickCount64 - MainForm.startTime) DIV 1000);
+    yRender:=MainForm.GetYAxis;
   END;
   IF MainForm.isAllDone THEN BEGIN
-{
-    FOR y:=0 to h do begin
-      FOR x:=0 to wide do begin
-	    MainForm.ImgRender.Canvas.Pixels[x,y]:=
-	       ColToByte(MainForm.TileBuffer[y,x].x)+        //red
-             ColToByte(MainForm.TileBuffer[y,x].y)*256+    //green
-             ColToByte(MainForm.TileBuffer[y,x].z)*256*256;//blune
-	  END;
-    END;
-}
     MainForm.cmdRender.Enabled:=TRUE;
-    MainForm.Caption:='TMyThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
+    MainForm.Caption:='TRenderThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
   END;
 END;
-procedure TMyThread.Execute;
+procedure TRenderThread.Execute;
 var
   x,y,sx,sy,s:integer;
-  temp,d       : VecRecord;
-  r1,r2,dx,dy  : real;
-  cam,tempRay  : RayRecord;
-  cx,cy: VecRecord;
-  tColor,r,camPosition,camDirection : VecRecord;
+  temp       : VecRecord;
+  tColor,r : VecRecord;
+  StatusText1:string;
 begin
-  fStatusText := 'TMyThread Starting ...';
-  Synchronize(@Showstatus);
-
-  camPosition:=CreateVec(50, 52, 295.6);
-  camDirection:=CreateVec(0, -0.042612, -1);
-  camDirection:=VecNorm( camDirection);
-  cam:=CreateRay(camPosition, camDirection);
-  cx:=CreateVec(wide * 0.5135 / h, 0, 0);
-  cy:= cx/ cam.d;
-  cy:=VecNorm(cy);
-  cy:= cy* 0.5135;
-  y:=yOffset;
-  fStatusText := 'TMyThread Running ...';
-  Synchronize(@ShowStatus);
+  y:=yRender;
+  fStatusText := 'TRenderThread Running ...';
+  StatusText1:=fStatusText;
   while y<h do begin
     for x:=0 to wide-1 do begin
-      for sy:=0 to 1 do begin
-        r:=CreateVec(0, 0, 0);
-        tColor:=ZeroVec;
+     r:=CreateVec(0, 0, 0);
+     tColor:=ZeroVec;
+     for sy:=0 to 1 do begin
         for sx:=0 to 1 do begin
           for s:=0 to samps-1 do begin
-            r1 := 2 * random;
-            IF (r1 < 1) THEN
-              dx := sqrt(r1) - 1
-            ELSE
-              dx := 1 - sqrt(2 - r1);
-
-            r2 := 2 * random;
-            IF (r2 < 1) THEN
-              dy := sqrt(r2) - 1
-            ELSE
-              dy := 1 - sqrt(2 - r2);
-
-            temp:= cx* (((sx + 0.5 + dx) / 2 + x) / wide - 0.5);
-            d:= cy* (((sy + 0.5 + dy) / 2 + (h - y - 1)) / h - 0.5);
-            d:= d +temp;
-            d:= d +cam.d;
-
-            d:=VecNorm(d);
-            tempRay.o:= d* 140;
-            tempRay.o:= tempRay.o+ cam.o;
-            tempRay.d := d;
-            temp:=Radiance(tempRay);
+            temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
             temp:= temp/ samps;
             r:= r+temp;
           end;(*samps*)
-          temp:= r* 0.24;
+          temp:= ClampVector(r)* 0.25;
           tColor:=tColor+ temp;
           r:=CreateVec(0, 0, 0);
         end;(*sx*)
       end;(*sy*)
       LineBuffer[x]:=tColor;
      end;(*x*)
-     yRender:=y;
+     fStatusText:=StatusText1+'y='+IntToStr(y);
      Synchronize(@ShowStatus);
-     y:=y+ThreadNum;
+     y:=yRender;
   END;(*y*)
   DoneCalc:=TRUE;
   Synchronize(@ShowStatus);
  end;
 
 
-constructor TMyThread.Create(CreateSuspended: boolean);
+constructor TRenderThread.Create(CreateSuspended: boolean);
 begin
   FreeOnTerminate := True;
   DoneCalc:=FALSE;
@@ -327,9 +315,9 @@ end;
 
 
 
-function TMyThread.Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
+function TRenderThread.Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
 var
-  n,d:real;
+  d:real;
   i:integer;
 begin
   t:=INF;
@@ -343,8 +331,82 @@ begin
   result:=(t<inf);
 END;
 
+function TRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
+var
+  id:integer;
+  obj:SphereClass;
+  x,n,f,nl,u,v,w,d:VecRecord;
+  p,r1,r2,r2s,t:real;
+  into:boolean;
+  RefRay:RayRecord;
+  nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
+  tDir:VecRecord;
+begin
+  id:=0;depth:=depth+1;
+  if intersect(r,t,id)=FALSE then begin
+    result:=ZeroVec;exit;
+  end;
+  obj:=SphereClass(sph[id]);
+  x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
+  IF VecDot(n,r.d)<0 THEN nl:=n else nl:=n*-1;
+  IF (f.x>f.y)and(f.x>f.z) THEN
+    p:=f.x
+  ELSE IF f.y>f.z THEN 
+    p:=f.y
+  ELSE
+    p:=f.z;
+  if (depth>5) then begin
+    if random<p then 
+      f:=f/p 
+    else begin
+      result:=obj.e;
+      exit;
+    end;
+  end;
+  CASE obj.refl OF
+    DIFF:BEGIN
+      r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
+      w:=nl;
+      IF abs(w.x)>0.1 THEN
+        u:=CreateVec(0,1,0) 
+      ELSE BEGIN
+        u:=VecNorm(CreateVec(1,0,0)/w );
+      END;
+      v:=w/u;
+      d := VecNorm(u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2));
+      result:=obj.e+VecMul(f,Radiance(CreateRay(x,d),depth) );
+    END;(*DIFF*)
+    SPEC:BEGIN
+      result:=obj.e+VecMul(f,(Radiance(CreateRay(x,r.d-n*2*(n*r.d) ),depth)));
+    END;(*SPEC*)
+    REFR:BEGIN
+      RefRay:=CreateRay(x,r.d-n*2*(n*r.d) );
+      into:= (n*nl>0);
+      nc:=1;nt:=1.5; if into then nnt:=nc/nt else nnt:=nt/nc; ddn:=r.d*nl; 
+      cos2t:=1-nnt*nnt*(1-ddn*ddn);
+      if cos2t<0 then begin   // Total internal reflection
+        result:=obj.e + VecMul(f,Radiance(RefRay,depth));
+        exit;
+      end;
+      if into then q:=1 else q:=-1;
+      tdir := VecNorm(r.d*nnt - n*(q*(ddn*nnt+sqrt(cos2t))));
+      IF into then Q:=-ddn else Q:=tdir*n;
+      a:=nt-nc; b:=nt+nc; R0:=a*a/(b*b); c := 1-Q;
+      Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
+      IF depth>2 THEN BEGIN
+        IF random<p then // 反射
+          result:=obj.e+VecMul(f,Radiance(RefRay,depth)*RP)
+        ELSE //屈折
+          result:=obj.e+VecMul(f,Radiance(CreateRay(x,tdir),depth)*TP);
+      END
+      ELSE BEGIN// 屈折と反射の両方を追跡
+        result:=obj.e+VecMul(f,Radiance(RefRay,depth)*Re+Radiance(CreateRay(x,tdir),depth)*Tr);
+      END;
+    END;(*REFR*)
+  END;(*CASE*)
+end;
 
-function TMyThread.Radiance(r:RayRecord):VecRecord;
+function TNERenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
 var
   id,i,tid:integer;
   obj,s:SphereClass;
@@ -357,7 +419,7 @@ var
   EL,sw,su,sv,l,tw,tu,tv:VecRecord;
   cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
   cl,cf,bcf:VecRecord;
-  E,depth:integer;
+  E:integer;
 BEGIN
 //writeln(' DebugY=',DebugY,' DebugX=',DebugX);
   depth:=0;
@@ -500,5 +562,6 @@ END;
 
 
 
-end.
+BEGIN
+END.
 

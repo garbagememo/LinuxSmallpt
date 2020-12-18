@@ -3,7 +3,7 @@ UNIT uModel;
 {$INLINE ON}
 {$modeswitch advancedrecords}
 INTERFACE
-uses SysUtils,Classes,uVect,Math;
+uses SysUtils,Classes,uVect;
 
 
 const
@@ -22,7 +22,8 @@ type
     o,d,cx,cy:VecRecord;
     dist:real;
     w,h:integer;
-    procedure Setup(o_,d_:VecRecord;w_,h_:integer;ratio,dist_:real);
+    ratio:real;
+    procedure Setup(o_,d_:VecRecord;w_,h_:integer;ratio_,dist_:real);
     function Ray(x,y,sx,sy:integer):RayRecord;
   END;
 
@@ -36,9 +37,6 @@ type
 procedure InitScene;
 function CopyScene(id:integer):TList;
 
-function CameraSet(o_,d_:VecRecord;w_,h_:integer;ratio,dist_:real):CameraRecord;
-FUNCTION GetRay(var cam:cameraRecord;x,y,sx,sy:integer):RayRecord;
- 
 var
   sc,ScList:TList;
   ScName:TStringList;
@@ -95,35 +93,9 @@ begin
   result:=tCam;
 end;
 
-FUNCTION CameraSet(o_,d_:VecRecord;w_,h_:integer;ratio,dist_:real):CameraRecord;
-BEGIN
-  result.dist:=dist_;result.w:=w_;result.h:=h_;
-  result.o:=o_;result.d:=VecNorm(d_);
-  result.cx:=CreateVec(ratio*w_/h_,0,0);
-  result.cy:=VecNorm(result.cx/d_)*ratio;
-END;
-
-FUNCTION GetRay(var cam:CameraRecord;x,y,sx,sy:integer):RayRecord;
-VAR
-  r1,r2,dx,dy:real;
-  td:VecRecord;
-  tempRay:RayRecord;
-BEGIN
-  r1:=2*random;
-  IF r1<1 THEN dx:=sqrt(r1)-1 ELSE dx:=1-sqrt(2-r1);
-  r2:=2*random;
-  IF (r2 < 1) THEN dy := sqrt(r2)-1 ELSE dy := 1-sqrt(2-r2);
-  td:= cam.cy*(((sy + 0.5 + dy)/2 + (cam.h-y-1))/cam.h - 0.5)+cam.cx*(((sx + 0.5 + dx)/2 + x)/cam.w - 0.5)+cam.d;
-  td:=VecNorm(td);
-  tempRay.o:= td* cam.dist;
-  tempRay.o:= tempRay.o+ cam.o;
-  tempRay.d := td;
-  result:=tempRay;
-END;
-
-procedure CameraRecord.Setup(o_,d_:VecRecord;w_,h_:integer;ratio,dist_:real);
+procedure CameraRecord.Setup(o_,d_:VecRecord;w_,h_:integer;ratio_,dist_:real);
 begin
-  dist:=dist_;w:=w_;h:=h_;
+  ratio:=ratio_;dist:=dist_;w:=w_;h:=h_;
   o:=o_;d:=VecNorm(d_);
   cx:=CreateVec(ratio*w_/h_,0,0);
   cy:=VecNorm(cx/d_)*ratio;
@@ -133,7 +105,6 @@ function CameraRecord.Ray(x,y,sx,sy:integer):RayRecord;
 VAR
   r1,r2,dx,dy:real;
   td:VecRecord;
-  tempRay:RayRecord;
 BEGIN
   r1:=2*random;
   IF r1<1 THEN dx:=sqrt(r1)-1 ELSE dx:=1-sqrt(2-r1);
@@ -382,7 +353,7 @@ END;
 
 function CopyScene(id:integer):TList;
 var
-  i,j:integer;
+  i:integer;
   rc,w:TList;
   s:SphereClass;
 begin

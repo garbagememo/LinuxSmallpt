@@ -13,15 +13,19 @@ TYPE
 	SPECULAR,   // 理想的な鏡面。
 	REFRACTION, // 理想的なガラス的物質。
 }
-    VecRecord=Record
-        x,y,z:real;
-    end;
-    RayRecord=Record
-       o, d:VecRecord;
-     end;
-   function CreateRay(o_,d_:VecRecord):RayRecord;
+  VecRecord=Record
+    x,y,z:real;
+  end;
+  RayRecord=Record
+    o, d:VecRecord;
+  end;
+  function CreateRay(o_,d_:VecRecord):RayRecord;
 
-   function ClampVector(v:VecRecord):VecRecord;
+  function ClampVector(v:VecRecord):VecRecord;
+
+  function RefToStr(ref:RefType):String;
+  function StrToRef(S:String):RefType;
+
 const
    BackGroundColor:VecRecord = (x:0;y:0;z:0);
    ZeroVec:VecRecord = (x:0;y:0;z:0);
@@ -182,9 +186,24 @@ begin
 end;
 function ColToByte(x:real):byte;inline;
 begin
-    result:=trunc(power(clamp(x),1/2.2)*255+0.5);
+  result:=trunc(power(x,1/2.2)*255+0.5);
+//   result:=trunc(power( 1-exp(-x) ,1/2.2)*255+0.5)
 end;
 
+
+function RefToStr(ref:RefType):String;
+const
+  RSA:array[RefType] of string=('DIFF','SPEC','REFR');
+BEGIN
+  result:=RSA[ref];
+END;
+function StrToRef(S:String):RefType;
+begin
+  result:=DIFF;
+  IF S='DIFF' THEN result:=DIFF;
+  IF S='SPEC' THEN result:=SPEC;
+  IF S='REFR' THEN result:=REFR;
+end;
 BEGIN
 END.
 
