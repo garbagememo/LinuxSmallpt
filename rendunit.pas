@@ -59,6 +59,9 @@ type
   TERenderThread= CLASS(TRenderThread)
     function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
   END;
+  TNRenderThread= CLASS(TRenderThread)
+    function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
+  END;
 
   { TMainForm }
 
@@ -167,6 +170,7 @@ begin
   AlgolCombo.Items.Add('Original');
   AlgolCombo.Items.Add('Next Event');
   AlgolCombo.Items.Add('Extend');
+  AlgolCombo.Items.Add('Non Loop');
   AlgolCombo.ItemIndex:=1;
   AlgolIndex:=1;
    MinimamHeight:=Height;
@@ -211,6 +215,8 @@ begin
       RenderThread:=TRenderThread.Create(True);
     IF AlgolIndex=2 THEN
       RenderThread:=TERenderThread.Create(True);
+    IF AlgolIndex=3 THEN
+      RenderThread:=TNRenderThread.Create(True);
      // True parameter it doesnt start automatically
     if Assigned(RenderThread.FatalException) then
       raise RenderThread.FatalException;
@@ -711,7 +717,7 @@ BEGIN
         ELSE BEGIN
           m1 := 1/sqrt(w.z*w.z+w.y*w.y);
           u := CreateVec(0, -w.z*m1, w.y*m1);
-	      v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
+	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
         end;
         sincos(r1,ss,cc);
 
@@ -780,6 +786,142 @@ BEGIN
   END;
 END;
 
+
+function TNRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
+var
+  id,i,tid:integer;
+  obj,s:SphereClass;
+  x,n,f,nl,u,v,w,d:VecRecord;
+  p,r1,r2,r2s,t,m1,ss,cc,nrd:real;
+  into:boolean;
+  RefRay:RayRecord;
+  nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
+  tDir:VecRecord;
+  EL,sw,su,sv,l,tw,tu,tv:VecRecord;
+  cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
+  cl,cf:VecRecord;
+BEGIN
+//writeln(' DebugY=',DebugY,' DebugX=',DebugX);
+  depth:=0;
+  id:=0;cl:=ZeroVec;cf:=CreateVec(1,1,1);
+  WHILE (TRUE) DO BEGIN
+    Inc(depth);
+    IF intersect(r,t,id)=FALSE THEN BEGIN
+      result:=cl;
+      exit;
+    END;
+    obj:=SphereClass(sph[id]);
+    x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
+    nrd:=n*r.d;
+    IF nrd<0 THEN nl:=n ELSE nl:=n*-1;
+    IF (f.x>f.y)and(f.x>f.z) THEN
+      p:=f.x
+    ELSE IF f.y>f.z THEN
+      p:=f.y
+    ELSE
+      p:=f.z;
+    cl:=cl+VecMul(cf,obj.e);
+    IF (Depth > 5) OR (p = 0) THEN
+      IF (random < p) THEN BEGIN
+        f:= f / p;
+        IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
+          Result := cl;
+          exit;
+        END;
+      END
+      ELSE BEGIN
+        Result := cl;
+        exit;
+      END;
+ (*
+    IF (depth>5) THEN BEGIN
+      IF random<p THEN
+        f:=f/p
+      ELSE BEGIN
+        result:=cl;
+        exit;
+      END;
+    END;
+ *)
+    cf:=VecMul(cf,f);
+    CASE obj.refl OF
+      DIFF:BEGIN
+
+        r1  := 2*PI * random;
+        r2  := random;
+        r2s := sqrt(r2);
+        w   := nl;
+
+        IF (abs(w.x) > 0.1) THEN BEGIN
+	       m1 := 1/sqrt(w.z*w.z+w.x*w.x);
+	       u := CreateVec(w.z*m1, 0, -w.x*m1);
+	       v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
+        END
+        ELSE BEGIN
+          m1 := 1/sqrt(w.z*w.z+w.y*w.y);
+          u := CreateVec(0, -w.z*m1, w.y*m1);
+	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
+        end;
+        sincos(r1,ss,cc);
+
+        u:= u*( cc * r2s); //4* cos
+        v:= v*(ss * r2s); //4* sin
+        w:= w*( sqrt(1 - r2));  //3* sqrt
+
+        d:=Vector_Add3(u, v, w);
+(*
+        r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
+        w:=nl;
+        IF abs(w.x)>0.1 THEN
+          u:=VecNorm(CreateVec(0,1,0)/w)
+        ELSE BEGIN
+          u:=VecNorm(CreateVec(1,0,0)/w );
+        END;
+        v:=w/u;
+
+       sincos(r1,ss,cc);
+       u:=u*(cc*r2s);v:=v*(ss*r2s);w:=w*(sqrt(1-r2));
+       tu:=(u+v)+w;
+       d:=VecNorm(tu);
+*)
+        r:=CreateRay(x,d)
+      END;(*DIFF*)
+      SPEC:BEGIN
+        tv:=n*2*nrd ;tv:=r.d-tv;
+        r:=CreateRay(x,tv);
+      END;(*SPEC*)
+      REFR:BEGIN
+        tv:=n*2*nrd ;tv:=r.d-tv;
+        RefRay:=CreateRay(x,tv);
+        into:= (n*nl>0);
+        nc:=1;nt:=1.5; IF into THEN nnt:=nc/nt ELSE nnt:=nt/nc; ddn:=r.d*nl;
+        cos2t:=1-nnt*nnt*(1-ddn*ddn);
+        IF cos2t<0 THEN BEGIN   // Total internal reflection
+          cl:=cl+VecMul(cf,obj.e);
+          r:=RefRay;
+          continue;
+        END;
+        IF into THEN q:=1 ELSE q:=-1;
+        tdir := VecNorm(r.d*nnt - n*(q*(ddn*nnt+sqrt(cos2t))));
+        IF into THEN Q:=-ddn ELSE Q:=tdir*n;
+        a:=nt-nc; b:=nt+nc; R0:=a*a/(b*b); c := 1-Q;
+        Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
+        IF random<p THEN BEGIN// 反射
+          cf:=cf*RP;
+          cl:=cl+VecMul(cf,obj.e);
+          r:=RefRay;
+        END
+        ELSE BEGIN//屈折
+          cf:=cf*TP;
+          cl:=cl+VecMul(cf,obj.e);
+          r:=CreateRay(x,tdir);
+        END
+      END;(*REFR*)
+    END;(*CASE*)
+  END;(*WHILE LOOP *)
+END;
+
+ 
 
 BEGIN
 END.

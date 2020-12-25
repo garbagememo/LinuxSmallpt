@@ -30,7 +30,7 @@ const
    BackGroundColor:VecRecord = (x:0;y:0;z:0);
    ZeroVec:VecRecord = (x:0;y:0;z:0);
    
-function CreateVec(x_,y_,z_:real):VecRecord;
+function CreateVec(const x_,y_,z_:real):VecRecord;inline;
 FUNCTION VecMul(const V1,V2:VecRecord):VecRecord;inline;
 FUNCTION VecNeg(V:VecRecord):VecRecord;
 FUNCTION Veclen(V:VecRecord):real;inline;
@@ -54,7 +54,7 @@ function ColToByte(x:real):byte;inline;
 
 IMPLEMENTATION
 
-function CreateVec(x_,y_,z_:real):VecRecord;
+function CreateVec(const x_,y_,z_:real):VecRecord;inline;
 BEGIN
     result.x:=x_;result.y:=y_;result.z:=z_;
 END;
