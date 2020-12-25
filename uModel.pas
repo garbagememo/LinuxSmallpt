@@ -10,6 +10,7 @@ const
   eps=1e-4;
   INF=1e20;
   M_1_PI=1/pi;
+  M_2PI=2*pi;
 type
   SphereClass=CLASS
     rad,rad2:real;       //radius, radius^2
