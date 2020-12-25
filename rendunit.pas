@@ -367,6 +367,19 @@ begin
     p:=f.y
   ELSE
     p:=f.z;
+  IF (Depth > 5) OR (p = 0) THEN
+      IF (random < p) THEN BEGIN
+        f:= f / p;
+        IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
+          Result := obj.e;
+          exit;
+        END;
+      END
+      ELSE BEGIN
+        Result := obj.e;
+        exit;
+      END;
+(*
   if (depth>5) then begin
     if random<p then 
       f:=f/p 
@@ -375,6 +388,7 @@ begin
       exit;
     end;
   end;
+*)
   CASE obj.refl OF
     DIFF:BEGIN
       r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
@@ -493,21 +507,11 @@ BEGIN
          Result := cl;
          exit;
        END;
-(*
-    IF (depth>5) THEN BEGIN
-      IF random<p THEN
-        f:=f/p
-      ELSE BEGIN
-        result:=cl;
-        exit;
-      END;
-    END;
-*)
+
     bcf:=cf;cf:=VecMul(cf,f);
     CASE obj.refl OF
       DIFF:BEGIN
- //       x:=x+nl*eps;(*ad hoc 突き抜け防止*)
-        r1  := 2*PI * random;
+        r1  := M_2PI * random;
         r2  := random;
         r2s := sqrt(r2);
         w   := nl;
@@ -529,19 +533,7 @@ BEGIN
         w:= w*( sqrt(1 - r2));  //3* sqrt
 
         d:=Vector_Add3(u, v, w);
- (*
-        r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
-        w:=nl;
-        IF abs(w.x)>0.1 THEN
-          u:=VecNorm(CreateVec(0,1,0)/w)
-        ELSE BEGIN
-          u:=VecNorm(CreateVec(1,0,0)/w );
-        END;
-        v:=w/u;
-        tu:=u*(cos(r1)*r2s);tu:=tu+v*(sin(r1)*r2s);tu:=tu+w*sqrt(1-r2);
-        d := VecNorm(tu);
-*)
-      // Loop over any lights
+       // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
         for i:=0 to sph.count-1 do BEGIN
@@ -560,8 +552,9 @@ BEGIN
           IF tr>1 THEN BEGIN
             (*半球の内外=cos_aがマイナスとsin_aが＋、－で場合分け*)
             (*半球内部なら乱反射した寄与全てを取ればよい・・はず*)
-            eps1:=2*pi*random;eps2:=random;eps2s:=sqrt(eps2);
-            tu:=u*(cos(eps1)*eps2s);tu:=tu+v*(sin(eps1)*eps2s);tu:=tu+w*sqrt(1-eps2);
+            eps1:=M_2PI*random;eps2:=random;eps2s:=sqrt(eps2);
+            sincos(eps,ss,cc);
+            tu:=u*(cc*eps2s);tu:=tu+v*(ss*eps2s);tu:=tu+w*sqrt(1-eps2);
             l:=VecNorm(tu);
             IF intersect(CreateRay(x,l),t,id) THEN BEGIN
               IF id=i THEN BEGIN
@@ -577,7 +570,7 @@ BEGIN
             cos_a := 1-eps1+eps1*cos_a_max;
             sin_a := sqrt(1-cos_a*cos_a);
             IF (1-2*random)<0 THEN sin_a:=-sin_a; 
-            phi := 2*PI*eps2;
+            phi := M_2PI*eps2;
             tw:=sw*(cos(phi)*sin_a);tw:=tw+sv*(sin(phi)*sin_a);tw:=tw+sw*cos_a;
             l:=VecNorm(tw);
             IF (intersect(CreateRay(x,l), t, id) ) THEN BEGIN 
