@@ -417,13 +417,40 @@ begin
     END;(*REFR*)
   END;(*CASE*)
 end;
+FUNCTION Utils_kahanSum3(a, b, c : real) : real;
+VAR
+  sum,cc,y,t: real;
+BEGIN
+  sum := a;
+  cc  := 0.0;
+
+  y   := b - cc;
+  t   := sum + y;
+  cc  := (t - sum) - y;
+  sum := t;
+
+  y   := c - cc;
+  t   := sum + y;
+  cc  := (t - sum) - y;
+  sum := t;
+
+  Utils_kahanSum3 := sum;
+END;
+
+FUNCTION Vector_Add3(a, b, c : VecRecord):VecRecord;
+BEGIN
+  Result.x := Utils_kahanSum3(a.x, b.x, c.x);
+  Result.y := Utils_kahanSum3(a.y, b.y, c.y);
+  Result.z := Utils_kahanSum3(a.z, b.z, c.z);
+END;
+
 
 function TNERenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
 var
   id,i,tid:integer;
   obj,s:SphereClass;
   x,n,f,nl,u,v,w,d:VecRecord;
-  p,r1,r2,r2s,t:real;
+  p,r1,r2,r2s,t,m1,ss,cc:real;
   into:boolean;
   RefRay:RayRecord;
   nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
@@ -453,6 +480,20 @@ BEGIN
       p:=f.z;
     tw:=obj.e*E;
     cl:=cl+VecMul(cf,tw);
+
+    IF (Depth > 5) OR (p = 0) THEN
+       IF (random < p) THEN BEGIN
+         f:= f / p;
+         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
+           Result := cl;
+           exit;
+         END;
+       END
+       ELSE BEGIN
+         Result := cl;
+         exit;
+       END;
+(*
     IF (depth>5) THEN BEGIN
       IF random<p THEN
         f:=f/p
@@ -461,10 +502,34 @@ BEGIN
         exit;
       END;
     END;
+*)
     bcf:=cf;cf:=VecMul(cf,f);
     CASE obj.refl OF
       DIFF:BEGIN
  //       x:=x+nl*eps;(*ad hoc 突き抜け防止*)
+        r1  := 2*PI * random;
+        r2  := random;
+        r2s := sqrt(r2);
+        w   := nl;
+
+        IF (abs(w.x) > 0.1) THEN BEGIN
+	      m1 := 1/sqrt(w.z*w.z+w.x*w.x);
+	      u := CreateVec(w.z*m1, 0, -w.x*m1);
+	      v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
+        END
+        ELSE BEGIN
+          m1 := 1/sqrt(w.z*w.z+w.y*w.y);
+          u := CreateVec(0, -w.z*m1, w.y*m1);
+	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
+        end;
+        sincos(r1,ss,cc);
+
+        u:= u*( cc * r2s); //4* cos
+        v:= v*(ss * r2s); //4* sin
+        w:= w*( sqrt(1 - r2));  //3* sqrt
+
+        d:=Vector_Add3(u, v, w);
+ (*
         r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
         w:=nl;
         IF abs(w.x)>0.1 THEN
@@ -475,7 +540,7 @@ BEGIN
         v:=w/u;
         tu:=u*(cos(r1)*r2s);tu:=tu+v*(sin(r1)*r2s);tu:=tu+w*sqrt(1-r2);
         d := VecNorm(tu);
-
+*)
       // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
@@ -569,33 +634,6 @@ BEGIN
       END;(*REFR*)
     END;(*CASE*)
   END;(*WHILE LOOP *)
-END;
-
-FUNCTION Utils_kahanSum3(a, b, c : real) : real;
-VAR
-  sum,cc,y,t: real;
-BEGIN
-  sum := a;
-  cc  := 0.0;
-
-  y   := b - cc;
-  t   := sum + y;
-  cc  := (t - sum) - y;
-  sum := t;
-
-  y   := c - cc;
-  t   := sum + y;
-  cc  := (t - sum) - y;
-  sum := t;
-
-  Utils_kahanSum3 := sum;
-END;
-
-FUNCTION Vector_Add3(a, b, c : VecRecord):VecRecord;
-BEGIN
-  Result.x := Utils_kahanSum3(a.x, b.x, c.x);
-  Result.y := Utils_kahanSum3(a.y, b.y, c.y);
-  Result.z := Utils_kahanSum3(a.z, b.z, c.z);
 END;
 
 
