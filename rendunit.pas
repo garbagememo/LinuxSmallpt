@@ -388,9 +388,9 @@ begin
       r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
       w:=nl;
       IF abs(w.x)>0.1 THEN
-        u:=CreateVec(0,1,0) 
+        u:=VecNorm(MidOneVec/w)(*CreateVec(0,1,0)*) 
       ELSE BEGIN
-        u:=VecNorm(CreateVec(1,0,0)/w );
+	 u:=VecNorm(TopOneVec/w);(*CreateVec(1,0,0)/w )*)
       END;
       v:=w/u;
       d := VecNorm(u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2));
@@ -639,7 +639,7 @@ var
 BEGIN
 //writeln(' DebugY=',DebugY,' DebugX=',DebugX);
   depth:=0;
-  id:=0;cl:=ZeroVec;cf:=CreateVec(1,1,1);
+  id:=0;cl:=ZeroVec;cf:=OneVec;
   WHILE (TRUE) DO BEGIN
     Inc(depth);
     IF intersect(r,t,id)=FALSE THEN BEGIN
@@ -657,11 +657,12 @@ BEGIN
     ELSE
       p:=f.z;
     cl:=cl+VecMul(cf,obj.e);
-    IF (Depth > 5) OR (p = 0) THEN
+    IF (Depth > 5) OR (p = 0) THEN BEGIN
+       //p=0が発生する確率は無いはずなのですが入れると早くなる。なんでや。
       IF (random < p) THEN BEGIN
         f:= f / p;
         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
-          Result := cl;
+            Result := cl;
           exit;
         END;
       END
@@ -669,48 +670,16 @@ BEGIN
         Result := cl;
         exit;
       END;
- (*
-    IF (depth>5) THEN BEGIN
-      IF random<p THEN
-        f:=f/p
-      ELSE BEGIN
-        result:=cl;
-        exit;
-      END;
     END;
- *)
     cf:=VecMul(cf,f);
     CASE obj.refl OF
       DIFF:BEGIN
-(*
-        r1  := 2*PI * random;
-        r2  := random;
-        r2s := sqrt(r2);
-        w   := nl;
-        IF (abs(w.x) > 0.1) THEN BEGIN
-	       m1 := 1/sqrt(w.z*w.z+w.x*w.x);
-	       u := CreateVec(w.z*m1, 0, -w.x*m1);
-	       v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
-        END
-        ELSE BEGIN
-          m1 := 1/sqrt(w.z*w.z+w.y*w.y);
-          u := CreateVec(0, -w.z*m1, w.y*m1);
-	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
-        end;
-        sincos(r1,ss,cc);
-
-        u:= u*( cc * r2s); //4* cos
-        v:= v*(ss * r2s); //4* sin
-        w:= w*( sqrt(1 - r2));  //3* sqrt
-
-        d:=Vector_Add3(u, v, w);
- *)
         r1:=M_2PI*random;r2:=random;r2s:=sqrt(r2);
         w:=nl;
-        IF abs(w.x)>0.1 THEN
-          u:=VecNorm(CreateVec(0,1,0)/w)
+        IF abs(w.x)>0.01 THEN
+          u:=VecNorm(MidOneVec/w)(*CreateVec(0,1,0)*)
         ELSE BEGIN
-          u:=VecNorm(CreateVec(1,0,0)/w );
+          u:=VecNorm(TopOneVec/w );(*CreateVec(1,0,0)*)
         END;
         v:=w/u;
 
