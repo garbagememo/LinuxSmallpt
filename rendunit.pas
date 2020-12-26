@@ -56,9 +56,6 @@ type
   TNERenderThread = CLASS(TRenderThread)
     function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
   END;
-  TERenderThread= CLASS(TRenderThread)
-    function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
-  END;
   TNRenderThread= CLASS(TRenderThread)
     function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
   END;
@@ -169,7 +166,6 @@ begin
   ModelIndex:=1;
   AlgolCombo.Items.Add('Original');
   AlgolCombo.Items.Add('Next Event');
-  AlgolCombo.Items.Add('Extend');
   AlgolCombo.Items.Add('Non Loop');
   AlgolCombo.ItemIndex:=1;
   AlgolIndex:=1;
@@ -214,8 +210,6 @@ begin
     IF AlgolIndex=0 THEN
       RenderThread:=TRenderThread.Create(True);
     IF AlgolIndex=2 THEN
-      RenderThread:=TERenderThread.Create(True);
-    IF AlgolIndex=3 THEN
       RenderThread:=TNRenderThread.Create(True);
      // True parameter it doesnt start automatically
     if Assigned(RenderThread.FatalException) then
@@ -630,206 +624,17 @@ BEGIN
 END;
 
 
-function TERenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
-VAR
-  distance : real;
-  id       : INTEGER;
-  sphere   : SphereClass;
-  x        : VecRecord;
-  n        : VecRecord;
-  nl       : VecRecord;
-  f        : VecRecord;
-  p        : real;
-  lll, m1  : real;
-
-  r1       : real;
-  r2       : real;
-  r2s      : real;
-
-  w        : VecRecord;
-  u        : VecRecord;
-  v        : VecRecord;
-  d        : VecRecord;
-
-  newRay   : RayRecord;
-  into     : BOOLEAN;
-  
-  nc       : real;
-  nt       : real;
-  nnt      : real;
-  ddn      : real;
-  cos2t    : real;
-  dot_n_dir: real;
-
-  a        : real;
-  b        : real;
-  c        : real;
-  R0       : real;
-  Re       : real;
-  Tr       : real;
-  RP       : real;
-  TP       : real;
-  tdir     : VecRecord;
-  mult     : real;
-  
-  cl       : VecRecord;
-  clTemp   : VecRecord;
-  cf       : VecRecord;
-
-  ss,cc    : real;
-
-BEGIN
-  Id       := 0;
-  distance := 0;
-  cl       := CreateVec(0, 0, 0);
-  cf       := CreateVec(1, 1, 1);
-
-  Result   := CreateVec(0, 0, 0);
-
-  WHILE (TRUE) DO
-  BEGIN
-    IF (NOT Intersect(r, distance, Id)) THEN
-    BEGIN
-      Result := cl;
-      exit;
-    END;
-
-    sphere := SphereClass(sph[id]);        { the hit object }
-    x:= r.d* distance;
-    x:= x+ r.o;
-    n:=x-sphere.p;
-    n:=VecNorm(n);
-    nl := n;
-	
-	dot_n_dir := n* r.d;
-	
-    IF (dot_n_dir >= 0) THEN
-      nl:= nl*( -1);
-    f := sphere.c;
-
-    IF (f.x > f.y) AND (f.x > f.z) THEN
-      p := f.x
-    ELSE
-    IF (f.y > f.z) THEN
-      p := f.y
-    ELSE
-      p := f.z;
-
-    cl:=cl+ VecMul(cf,sphere.E);
-
-    Depth := Depth + 1;
-    IF (Depth > 5) OR (p = 0) THEN
-      IF (random < p) THEN BEGIN
-        f:= f / p;
-        IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
-          Result := cl;
-          exit;
-        END;
-      END
-      ELSE BEGIN
-        Result := cl;
-        exit;
-      END;
-
-    cf:=VecMul(cf, f);
-
-    CASE sphere.refl OF
-      DIFF:BEGIN
-        r1  := 2*PI * random;
-        r2  := random;
-        r2s := sqrt(r2);
-        w   := nl;
-
-        IF (abs(w.x) > 0.1) THEN BEGIN
-	      m1 := 1/sqrt(w.z*w.z+w.x*w.x);
-	      u := CreateVec(w.z*m1, 0, -w.x*m1);
-	      v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
-        END
-        ELSE BEGIN
-          m1 := 1/sqrt(w.z*w.z+w.y*w.y);
-          u := CreateVec(0, -w.z*m1, w.y*m1);
-	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
-        end;
-        sincos(r1,ss,cc);
-
-        u:= u*( cc * r2s); //4* cos
-        v:= v*(ss * r2s); //4* sin
-        w:= w*( sqrt(1 - r2));  //3* sqrt
-
-        d:=Vector_Add3(u, v, w);
-
-        r:=CreateRay(x, d);
-      END;(*DIFF*)
-      SPEC:BEGIN
-        newRay.O := x;
-        newRay.D:= r.D- (n+n)*dot_n_dir;
-        r := newRay;
-      END;(*SPEC*)
-      REFR:BEGIN
-        newRay.O := x;
-        newRay.D:= r.D -  n*2*(n*r.D);
-
-        into := (n* nl) > 0;
-        nc   := 1;
-        nt   := 1.5;
-        IF (into) THEN BEGIN
-          nnt := nc / nt;
-          mult := 1.0;
-        END
-        ELSE BEGIN
-          nnt := nt / nc;
-          mult := -1.0;
-        END;
-        ddn   := r.D* nl;
-        cos2t := 1 - nnt * nnt * (1 - ddn * ddn);
-        IF (cos2t < 0) THEN BEGIN
-          r := newRay;
-          Continue;
-        END;
-
-        tdir:= r.D* nnt;
-        tdir:= tdir- n*( mult * (ddn * nnt + sqrt(cos2t)));
-        tdir:=VecNorm(tdir);
-        a  := nt - nc;
-        b  := nt + nc;
-        R0 := a * a / (b * b);
-        IF (into) THEN
-          c := 1 + ddn
-        ELSE
-          c := 1 - tdir* n;
-
-        Re := R0 + (1 - R0) * c * c * c * c * c;
-        Tr := 1 - Re;
-        P  := 0.25 + 0.5 * Re;
-        RP := Re / P;
-        TP := Tr / (1 - P);
-
-        IF (random < p) THEN BEGIN
-          cf:= cf* RP;
-          r := newRay;
-        END
-        ELSE BEGIN
-          cf:= cf* TP;
-          r:=CreateRay( x, tdir);
-        END;
-      END;(*REFR*)
-    END;(*case*)
-  END;
-END;
-
-
 function TNRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
 var
-  id,i,tid:integer;
-  obj,s:SphereClass;
+  id:integer;
+  obj:SphereClass;
   x,n,f,nl,u,v,w,d:VecRecord;
-  p,r1,r2,r2s,t,m1,ss,cc,nrd:real;
+  p,r1,r2,r2s,t,ss,cc,nrd:real;
   into:boolean;
   RefRay:RayRecord;
   nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
   tDir:VecRecord;
-  EL,sw,su,sv,l,tw,tu,tv:VecRecord;
-  cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
+  tu,tv:VecRecord;
   cl,cf:VecRecord;
 BEGIN
 //writeln(' DebugY=',DebugY,' DebugX=',DebugX);
@@ -877,12 +682,11 @@ BEGIN
     cf:=VecMul(cf,f);
     CASE obj.refl OF
       DIFF:BEGIN
-
+(*
         r1  := 2*PI * random;
         r2  := random;
         r2s := sqrt(r2);
         w   := nl;
-
         IF (abs(w.x) > 0.1) THEN BEGIN
 	       m1 := 1/sqrt(w.z*w.z+w.x*w.x);
 	       u := CreateVec(w.z*m1, 0, -w.x*m1);
@@ -900,8 +704,8 @@ BEGIN
         w:= w*( sqrt(1 - r2));  //3* sqrt
 
         d:=Vector_Add3(u, v, w);
-(*
-        r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
+ *)
+        r1:=M_2PI*random;r2:=random;r2s:=sqrt(r2);
         w:=nl;
         IF abs(w.x)>0.1 THEN
           u:=VecNorm(CreateVec(0,1,0)/w)
@@ -914,8 +718,7 @@ BEGIN
        u:=u*(cc*r2s);v:=v*(ss*r2s);w:=w*(sqrt(1-r2));
        tu:=(u+v)+w;
        d:=VecNorm(tu);
-*)
-        r:=CreateRay(x,d)
+       r:=CreateRay(x,d)
       END;(*DIFF*)
       SPEC:BEGIN
         tv:=n*2*nrd ;tv:=r.d-tv;
