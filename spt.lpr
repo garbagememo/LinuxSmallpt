@@ -9,7 +9,7 @@ uses
   cthreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, rendunit;
+  Forms, main;
 
 {$R *.res}
 
