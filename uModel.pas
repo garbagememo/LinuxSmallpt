@@ -65,7 +65,6 @@ begin
   bc[3]:=CreateVec(0.50,0.75,0.75);
   bc[4]:=CreateVec(0.50,1.00,0.50);
   bc[5]:=CreateVec(0.75,0.75,0.50);
-
   for i:=0 to 5 do begin
     for k:=0 to 5 do ef[k]:=0;
     ef[i]:=3;
@@ -95,8 +94,9 @@ begin
     result:=false;
     exit;
   END;
-  IF SnapList.Count<SceneIndex THEN BEGIN
+  IF SnapList.Count<=SceneIndex THEN BEGIN
     result:=false;
+     exit; 
   end;
    Scene.spl:=CopySnap(SceneIndex);
    Scene.cam:=CopyCamera(SceneIndex,w,h);
