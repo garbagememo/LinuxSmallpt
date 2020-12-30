@@ -27,12 +27,18 @@ type
     procedure Setup(o_,d_:VecRecord;w_,h_:integer;ratio_,dist_:real);
     function Ray(x,y,sx,sy:integer):RayRecord;
   END;
+  SceneRecord=RECORD
+    spl:TList;
+    cam:CameraRecord;
+  end;
 
   SnapRecord=RECORD
      SnapList,CamList:TList;
+     SceneIndex:integer;
      procedure MakeSnap;
      function CopySnap(id:integer):TList;
      function CopyCamera(id,w,h:integer):CameraRecord;
+     function GetNextScene(var Scene:SceneRecord;w,h:integer):boolean;
   END;
 
 procedure InitScene;
@@ -81,7 +87,22 @@ R:=14;
       SnapList.Add(ScList);
     end;
   end;
+  SceneIndex:=0;
 end;
+function SnapRecord.GetNextScene(var Scene:SceneRecord;w,h:integer):boolean;
+begin
+  IF Assigned(SnapList)=FALSE THEN BEGIN
+    result:=false;
+    exit;
+  END;
+  IF SnapList.Count<SceneIndex THEN BEGIN
+    result:=false;
+  end;
+   Scene.spl:=CopySnap(SceneIndex);
+   Scene.cam:=CopyCamera(SceneIndex,w,h);
+   Inc(SceneIndex);
+end;
+
 function SnapRecord.CopySnap(id:integer):TList;
 BEGIN
   result:=TList(SnapList[id]);

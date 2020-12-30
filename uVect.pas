@@ -1,7 +1,7 @@
 ﻿UNIT uVect;
 {$MODE objfpc}{$H+}
 {$INLINE ON}
-
+{$modeswitch advancedrecords}
 INTERFACE
 
 USES
@@ -15,20 +15,24 @@ TYPE
 }
   VecRecord=Record
     x,y,z:real;
-  end;
+    procedure Gen(const x_,y_,z_ : real);inline;
+    procedure Mul(const v:VecRecord);inline;
+    function Dot(const v:VecRecord):real;inline;
+  end;					 
   RayRecord=Record
     o, d:VecRecord;
   end;
   function CreateRay(o_,d_:VecRecord):RayRecord;
-
   function ClampVector(v:VecRecord):VecRecord;
-
   function RefToStr(ref:RefType):String;
   function StrToRef(S:String):RefType;
 
 const
    BackGroundColor:VecRecord = (x:0;y:0;z:0);
-   ZeroVec:VecRecord = (x:0;y:0;z:0);
+   ZeroVec:VecRecord	     = (x:0;y:0;z:0);
+   OneVec:VecRecord	     = (x:1;y:1;z:1);
+   MidOneVec:VecRecord	     = (x:0;y:1;z:1);
+   TopOneVec:VecRecord	     = (x:1;y:0;z:0);
    
 function CreateVec(const x_,y_,z_:real):VecRecord;inline;
 FUNCTION VecMul(const V1,V2:VecRecord):VecRecord;inline;
@@ -101,8 +105,23 @@ BEGIN
     result.x:=V1.x+V2.x+V3.x;
     result.y:=V1.y+V2.y+V3.y;
     result.z:=V1.z+V2.z+V3.z;
-    
 END;
+procedure VecRecord.Gen(const x_,y_,z_ : real);inline;
+begin
+ x:=x_;y:=y_;z:=z_;
+end;
+procedure VecRecord.Mul(const v:VecRecord);inline;
+begin
+  x:=x*v.x;
+  y:=y*v.y;
+  z:=z*v.z;
+end;
+function VecRecord.Dot(const v:VecRecord):real;inline;
+begin
+  result:=x*v.x+y*v.y+z*v.z;
+end;
+
+
 function FtoSF(r:real):string;
 var
   i,j:LongInt;
