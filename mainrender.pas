@@ -31,11 +31,14 @@ uses
   SysUtils, uVect,uModel,math;
 
 CONST
-  MSG_NEWLINE = WM_USER + 0;
-  MSG_DecThreadCount=WM_USER+1;
-  MSG_DrawNextScene=WM_USER+2;
-type
+  MSG_NEWLINE	     = WM_USER + 0;
+  MSG_DecThreadCount = WM_USER+1;
+  MSG_DrawNextScene  = WM_USER+2;
+  DefaultSaveFile    = 'out.png';
+   DefaultDir	     = 'auto';
+   PathSeparator     = '/';(*IF Windows THEN \*)
 
+type
   { TRenderThread }
 
   TLineBuffer=array[0..1980] of VecRecord;
@@ -110,6 +113,7 @@ type
     ThreadList:TList;
     yAxis:integer;
     AutoFlag:boolean;
+    procedure RenderSetup;
     function isAllDone:boolean;
     function GetYAxis:integer;
     PROCEDURE MSGDrawNextScene(VAR Message:TLMessage);MESSAGE MSG_DrawNextScene;
@@ -193,7 +197,7 @@ begin
     imgRender.Picture.SaveToFile(SaveDlg.FileName);
 end;
 
-procedure TMainForm.cmdRenderClick(Sender: TObject);
+procedure TMainForm.RenderSetup;
 var
   RenderThread: TRenderThread;
   i:integer;
@@ -241,9 +245,19 @@ begin
   end;
   StartTime:=GetTickCount64;
  
-  FOR i:=0 TO ThreadNum-1 DO BEGIN
-    TRenderThread(ThreadList[i]).Start;
-  end;
+end;
+procedure TMainForm.cmdRenderClick(Sender: TObject);
+var
+  RenderThread: TRenderThread;
+  i:integer;
+begin
+   RenderSetup;
+   FOR i:=0 TO ThreadList.Count-1 DO BEGIN
+     TRenderThread(ThreadList[i]).AutoFlag:=false;
+   END;
+   FOR i:=0 TO ThreadList.Count-1 DO BEGIN
+     TRenderThread(ThreadList[i]).Start;
+   END;
 end;
 PROCEDURE TMainForm.MSGDrawNextScene(VAR Message : TLMessage);
 var
@@ -251,55 +265,20 @@ var
   RenderThread: TRenderThread;
   i:integer;
 BEGIN
-  IF SR.GetNextScene(SceneRec,StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
-      IF Assigned(ThreadList) THEN BEGIN
-	 ThreadList.Destroy;
-      END;
+//   IF DirectoryExists(DefaultDir)=FALSE THEN MkDir(DefaultDir);
+   IF SR.GetNextScene(SceneRec,StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
+      RenderSetup;
+         
+      FOR i:=0 TO ThreadList.Count-1 DO BEGIN
+        TRenderThread(ThreadList[i]).camR:=SceneRec.cam;
+        TRenderThread(ThreadList[i]).sph:=SceneRec.spl;
+        TRenderThread(ThreadList[i]).AutoFlag:=TRUE;
+	TRenderThread(ThreadList[i]).AutoIndex:=SR.SceneIndex;
+      END;	 
 
-      imgRender.Width := strtoint(strWidth.Text);
-      imgRender.Height := strtoint(strHeight.Text);
-      ThreadNum:=StrToInt(StrThreadCount.Text);
-      samps:=StrToInt(StrSampleCount.Text);
-    //add
-      imgRender.Picture.Bitmap.Width:=imgRender.Width;
-      imgRender.Picture.Bitmap.Height:=imgRender.Height;
-    //Orginal source
-      imgRender.Canvas.Brush.Color := clBlack;
-      imgRender.Canvas.FillRect(0,0, imgRender.Width, imgRender.Height);
-
-      cmdRender.Enabled:=FALSE;
-      ClientWidth := imgRender.Left + 5 + imgRender.Width;
-      IF (ImgRender.Top+5+ImgRender.Height) >MinimamHeight THEN
-	ClientHeight := imgRender.Top + 5 + imgRender.Height;
-      ThreadList:=TList.Create;
-      yAxis:=-1;
-      FOR i:=0 TO ThreadNum-1 DO BEGIN
-	IF AlgolIndex=1 then
-	  RenderThread:=TNERenderThread.Create(TRUE);
-	IF AlgolIndex=0 THEN
-	  RenderThread:=TRenderThread.Create(True);
-	IF AlgolIndex=2 THEN
-	  RenderThread:=TNRenderThread.Create(True);
-	 // True parameter it doesnt start automatically
-	if Assigned(RenderThread.FatalException) then
-	  raise RenderThread.FatalException;
-	RenderThread.wide:=imgRender.Width;
-	RenderThread.h:=imgRender.Height;
-	RenderThread.samps:=StrToInt(StrSampleCount.text);
-	RenderThread.yRender:=GetYAxis;
-	RenderThread.DoneCalc:=FALSE;
-	RenderThread.camR:=SceneRec.cam;
-	RenderThread.sph:=SceneRec.spl;
-	RenderThread.AutoFlag:=TRUE;
-	RenderThread.AutoIndex:=SR.SceneIndex;
-	ThreadList.Add(RenderThread);
-      end;
-      StartTime:=GetTickCount64;
-
-      FOR i:=0 TO ThreadNum-1 DO BEGIN
+      FOR i:=0 TO ThreadList.Count-1 DO BEGIN
 	TRenderThread(ThreadList[i]).Start;
-      end;     
-
+      END;
    END
   ELSE BEGIN
     AutoFlag:=FALSE;
@@ -335,7 +314,10 @@ end;
 
 procedure TRenderThread.InitRend;
 begin
-   IF AutoFlag = FALSE THEN sph:=CopyScene(MainForm.ModelIndex);
+   IF AutoFlag = FALSE THEN BEGIN
+      sph:=CopyScene(MainForm.ModelIndex);
+      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
+   END;
 end;
 procedure TRenderThread.DoRend;
 // this method is only called by Synchronize(@ShowStatus) and therefore
@@ -360,14 +342,23 @@ BEGIN
   END;
 END;
 procedure TRenderThread.DoneRend;
+var
+   st : string;
 BEGIN
    AutoFlag:=MainForm.AutoFlag;
    IF MainForm.isAllDone THEN BEGIN
       MainForm.yAxis:=-1;
       MainForm.cmdRender.Enabled:=TRUE;
       MainForm.Caption:='TRenderThread Time: '+FormatDateTime('YYYY-MM-DD HH:NN:SS',Now);
+      
       IF AutoFlag THEN BEGIN
-	    PostMessage(MainForm.handle,MSG_DrawNextScene,0,0);
+	 st:=IntToStr(SR.SceneIndex)+'.png';
+	 while length(st)<7 do st:='0'+st;
+	 MainForm.imgRender.Picture.SaveToFile(st);
+	 PostMessage(MainForm.handle,MSG_DrawNextScene,0,0);
+      END
+      ELSE BEGIN
+	 MainForm.imgRender.Picture.SaveToFile(DefaultSaveFile); 
       END;
   END;
 END;
@@ -381,7 +372,7 @@ var
 begin
   y:=yRender;
   Synchronize(@InitRend); 
-  fStatusText := 'TRenderThread Running ...';
+  fStatusText := 'Render Running ...';
   StatusText1:=fStatusText;
   while y<h do begin
     for x:=0 to wide-1 do begin
