@@ -238,10 +238,7 @@ begin
     RenderThread.samps:=StrToInt(StrSampleCount.text);
     RenderThread.yRender:=GetYAxis;
     RenderThread.DoneCalc:=FALSE;
-    RenderThread.CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),
-                        RenderThread.wide,RenderThread.h,
-                        0.5135,140);
-    ThreadList.Add(RenderThread);
+     ThreadList.Add(RenderThread);
   end;
   StartTime:=GetTickCount64;
  
@@ -254,8 +251,6 @@ begin
    RenderSetup;
    FOR i:=0 TO ThreadList.Count-1 DO BEGIN
      TRenderThread(ThreadList[i]).AutoFlag:=false;
-   END;
-   FOR i:=0 TO ThreadList.Count-1 DO BEGIN
      TRenderThread(ThreadList[i]).Start;
    END;
 end;
@@ -266,17 +261,11 @@ var
   i:integer;
 BEGIN
 //   IF DirectoryExists(DefaultDir)=FALSE THEN MkDir(DefaultDir);
-   IF SR.GetNextScene(SceneRec,StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
+   IF SR.GetNextScene(StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
       RenderSetup;
          
       FOR i:=0 TO ThreadList.Count-1 DO BEGIN
-        TRenderThread(ThreadList[i]).camR:=SceneRec.cam;
-        TRenderThread(ThreadList[i]).sph:=SceneRec.spl;
         TRenderThread(ThreadList[i]).AutoFlag:=TRUE;
-	TRenderThread(ThreadList[i]).AutoIndex:=SR.SceneIndex;
-      END;	 
-
-      FOR i:=0 TO ThreadList.Count-1 DO BEGIN
 	TRenderThread(ThreadList[i]).Start;
       END;
    END
@@ -317,6 +306,11 @@ begin
    IF AutoFlag = FALSE THEN BEGIN
       sph:=CopyScene(MainForm.ModelIndex);
       CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
+   END
+   ELSE BEGIN
+      CamR:=SR.CurSceneRec.cam;
+      sph:=SR.CurSceneRec.spl;
+      AutoIndex:=SR.SceneIndex;
    END;
 end;
 procedure TRenderThread.DoRend;
@@ -469,9 +463,9 @@ begin
       r1:=2*PI*random;r2:=random;r2s:=sqrt(r2);
       w:=nl;
       IF abs(w.x)>0.1 THEN
-        u:=VecNorm(MidOneVec/w)(*CreateVec(0,1,0)*) 
+        u:=VecNorm(MidOneVec/w)
       ELSE BEGIN
-        u:=VecNorm(TopOneVec/w);(*CreateVec(1,0,0)/w )*)
+        u:=VecNorm(TopOneVec/w);
       END;
       v:=w/u;
       d := VecNorm(u*cos(r1)*r2s + v*sin(r1)*r2s + w*sqrt(1-r2));
@@ -592,14 +586,14 @@ BEGIN
         w   := nl;
 
         IF (abs(w.x) > 0.1) THEN BEGIN
-	      m1 := 1/sqrt(w.z*w.z+w.x*w.x);
-	      u := CreateVec(w.z*m1, 0, -w.x*m1);
-	      v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
+          m1 := 1/sqrt(w.z*w.z+w.x*w.x);
+          u := CreateVec(w.z*m1, 0, -w.x*m1);
+          v := CreateVec(w.y*u.z, w.z*u.x-w.x*u.z, -w.y*u.x); //4* vs 6*
         END
         ELSE BEGIN
           m1 := 1/sqrt(w.z*w.z+w.y*w.y);
           u := CreateVec(0, -w.z*m1, w.y*m1);
-	       v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
+          v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
         end;
         sincos(r1,ss,cc);
 
@@ -607,7 +601,7 @@ BEGIN
         v:= v*(ss * r2s); //4* sin
         w:= w*( sqrt(1 - r2));  //3* sqrt
 
-        d:=Vector_Add3(u, v, w);
+	d:=Vector_Add3(u, v, w);d:=VecNorm(d);
        // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
@@ -619,7 +613,7 @@ BEGIN
           IF (s.e.x<=0) and  (s.e.y<=0) and (s.e.z<=0)  THEN continue; // skip non-lights
           sw:=s.p-x;
           tr:=sw*sw;  tr:=s.rad2/tr;
-          IF abs(sw.x)/sqrt(tr)>1e-8 THEN 
+	  IF abs(sw.x)/sqrt(tr)>0.1 THEN 
             su:=VecNorm(CreateVec(0,1,0)/sw) 
           ELSE 
             su:=VecNorm(CreateVec(1,0,0)/sw);

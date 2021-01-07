@@ -38,7 +38,7 @@ function CreateVec(const x_,y_,z_:real):VecRecord;inline;
 FUNCTION VecMul(const V1,V2:VecRecord):VecRecord;inline;
 FUNCTION VecNeg(V:VecRecord):VecRecord;
 FUNCTION Veclen(V:VecRecord):real;inline;
-FUNCTION VecNorm(V:VecRecord):VecRecord;inline;
+FUNCTION VecNorm(const V:VecRecord):VecRecord;inline;
 FUNCTION VecDot(const V1,V2 :VecRecord):real;//内積
 FUNCTION VecCross(const V1,V2 :VecRecord):VecRecord;//外積
 FUNCTION VecAdd3(V1,V2,V3:VecRecord):VecRecord;
@@ -86,7 +86,7 @@ BEGIN
    result:=sqrt(V.x*V.x+V.y*V.y+V.z*V.z);
 END;
 
-FUNCTION VecNorm(V:VecRecord):VecRecord;inline;
+FUNCTION VecNorm(const V:VecRecord):VecRecord;inline;
 BEGIN
     result:=V/VecLen(V) ;
 END;

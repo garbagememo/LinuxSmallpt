@@ -33,12 +33,13 @@ type
   end;
 
   SnapRecord=RECORD
-     SnapList,CamList:TList;
-     SceneIndex:integer;
+     SnapList,CamList: TList;
+     SceneIndex	     : integer;
+     CurSceneRec     : SceneRecord;
      procedure MakeSnap;
      function CopySnap(id:integer):TList;
      function CopyCamera(id,w,h:integer):CameraRecord;
-     function GetNextScene(var Scene:SceneRecord;w,h:integer):boolean;
+     function GetNextScene(w,h:integer):boolean;
   END;
 
 procedure InitScene;
@@ -88,7 +89,7 @@ R:=14;
   end;
   SceneIndex:=0;
 end;
-function SnapRecord.GetNextScene(var Scene:SceneRecord;w,h:integer):boolean;
+function SnapRecord.GetNextScene(w,h:integer):boolean;
 begin
   IF Assigned(SnapList)=FALSE THEN BEGIN
     result:=false;
@@ -98,8 +99,8 @@ begin
     result:=false;
      exit; 
   end;
-   Scene.spl:=CopySnap(SceneIndex);
-   Scene.cam:=CopyCamera(SceneIndex,w,h);
+   CurSceneRec.spl:=CopySnap(SceneIndex);
+   CurSceneRec.cam:=CopyCamera(SceneIndex,w,h);
    Inc(SceneIndex);
 end;
 
