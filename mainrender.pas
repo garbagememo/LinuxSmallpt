@@ -35,7 +35,7 @@ CONST
   MSG_DecThreadCount = WM_USER+1;
   MSG_DrawNextScene  = WM_USER+2;
   DefaultSaveFile    = 'out.png';
-   DefaultDir	     = 'auto';
+  AutoDir	     = 'auto';
    PathSeparator     = '/';(*IF Windows THEN \*)
 
 type
@@ -202,46 +202,45 @@ var
   RenderThread: TRenderThread;
   i:integer;
 begin
-  IF Assigned(ThreadList) THEN BEGIN
-     ThreadList.Destroy;
-  END;
+   IF Assigned(ThreadList) THEN BEGIN
+      ThreadList.Destroy;
+   END;
 
-  imgRender.Width := strtoint(strWidth.Text);
-  imgRender.Height := strtoint(strHeight.Text);
-  ThreadNum:=StrToInt(StrThreadCount.Text);
-  samps:=StrToInt(StrSampleCount.Text);
-//add
-  imgRender.Picture.Bitmap.Width:=imgRender.Width;
-  imgRender.Picture.Bitmap.Height:=imgRender.Height;
-//Orginal source
-  imgRender.Canvas.Brush.Color := clBlack;
-  imgRender.Canvas.FillRect(0,0, imgRender.Width, imgRender.Height);
+   imgRender.Width := strtoint(strWidth.Text);
+   imgRender.Height := strtoint(strHeight.Text);
+   ThreadNum:=StrToInt(StrThreadCount.Text);
+   samps:=StrToInt(StrSampleCount.Text);
+   //add
+   imgRender.Picture.Bitmap.Width:=imgRender.Width;
+   imgRender.Picture.Bitmap.Height:=imgRender.Height;
+   //Orginal source
+   imgRender.Canvas.Brush.Color := clBlack;
+   imgRender.Canvas.FillRect(0,0, imgRender.Width, imgRender.Height);
 
-  cmdRender.Enabled:=FALSE;
-  ClientWidth := imgRender.Left + 5 + imgRender.Width;
-  IF (ImgRender.Top+5+ImgRender.Height) >MinimamHeight THEN
-    ClientHeight := imgRender.Top + 5 + imgRender.Height;
-  ThreadList:=TList.Create;
-  yAxis:=-1;
-  FOR i:=0 TO ThreadNum-1 DO BEGIN
-    IF AlgolIndex=1 then
-      RenderThread:=TNERenderThread.Create(TRUE);
-    IF AlgolIndex=0 THEN
-      RenderThread:=TRenderThread.Create(True);
-    IF AlgolIndex=2 THEN
-      RenderThread:=TNRenderThread.Create(True);
-     // True parameter it doesnt start automatically
-    if Assigned(RenderThread.FatalException) then
-      raise RenderThread.FatalException;
-    RenderThread.wide:=imgRender.Width;
-    RenderThread.h:=imgRender.Height;
-    RenderThread.samps:=StrToInt(StrSampleCount.text);
-    RenderThread.yRender:=GetYAxis;
-    RenderThread.DoneCalc:=FALSE;
-     ThreadList.Add(RenderThread);
-  end;
-  StartTime:=GetTickCount64;
- 
+   cmdRender.Enabled:=FALSE;
+   ClientWidth := imgRender.Left + 5 + imgRender.Width;
+   IF (ImgRender.Top+5+ImgRender.Height) >MinimamHeight THEN
+      ClientHeight := imgRender.Top + 5 + imgRender.Height;
+   ThreadList:=TList.Create;
+   yAxis:=-1;
+   FOR i:=0 TO ThreadNum-1 DO BEGIN
+      IF AlgolIndex=1 then
+	 RenderThread:=TNERenderThread.Create(TRUE);
+      IF AlgolIndex=0 THEN
+	 RenderThread:=TRenderThread.Create(True);
+      IF AlgolIndex=2 THEN
+	 RenderThread:=TNRenderThread.Create(True);
+      // True parameter it doesnt start automatically
+      if Assigned(RenderThread.FatalException) then
+	 raise RenderThread.FatalException;
+      RenderThread.wide:=imgRender.Width;
+      RenderThread.h:=imgRender.Height;
+      RenderThread.samps:=StrToInt(StrSampleCount.text);
+      RenderThread.yRender:=GetYAxis;
+      RenderThread.DoneCalc:=FALSE;
+      ThreadList.Add(RenderThread);
+   end;
+   StartTime:=GetTickCount64; 
 end;
 procedure TMainForm.cmdRenderClick(Sender: TObject);
 var
@@ -260,10 +259,8 @@ var
   RenderThread: TRenderThread;
   i:integer;
 BEGIN
-//   IF DirectoryExists(DefaultDir)=FALSE THEN MkDir(DefaultDir);
    IF SR.GetNextScene(StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
       RenderSetup;
-         
       FOR i:=0 TO ThreadList.Count-1 DO BEGIN
         TRenderThread(ThreadList[i]).AutoFlag:=TRUE;
 	TRenderThread(ThreadList[i]).Start;
@@ -283,8 +280,13 @@ end;
 
 procedure TMainForm.cmdAutoClick(Sender: TObject);
 begin
-  AutoFlag:=TRUE;
+   AutoFlag:=TRUE;
    SR.MakeSnap;
+   IF Not DirectoryExists(AutoDir) then
+      IF Not CreateDir (AutoDir) THEN
+	 Writeln ('Failed to create directory !')
+      else
+	 Writeln ('Created "NewDir" directory');
    PostMessage(Handle,MSG_DrawNextScene,0,0);
 end;
 
@@ -348,7 +350,7 @@ BEGIN
       IF AutoFlag THEN BEGIN
 	 st:=IntToStr(SR.SceneIndex)+'.png';
 	 while length(st)<7 do st:='0'+st;
-	 MainForm.imgRender.Picture.SaveToFile(st);
+	 MainForm.imgRender.Picture.SaveToFile(AutoDir+PathSeparator+st);
 	 PostMessage(MainForm.handle,MSG_DrawNextScene,0,0);
       END
       ELSE BEGIN
