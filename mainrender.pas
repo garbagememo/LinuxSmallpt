@@ -375,22 +375,22 @@ begin
      r:=CreateVec(0, 0, 0);
      tColor:=ZeroVec;
      for sy:=0 to 1 do begin
-	for sx:=0 to 1 do begin
-	  for s:=0 to samps-1 do begin
-	    temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
-	    temp:= temp/ samps;
-	    r:= r+temp;
-	  end;(*samps*)
-	  temp:= ClampVector(r)* 0.25;
-	  tColor:=tColor+ temp;
-	  r:=CreateVec(0, 0, 0);
-	end;(*sx*)
-      end;(*sy*)
-      LineBuffer[x]:=tColor;
-     end;(*x*)
-     fStatusText:=StatusText1+'y='+IntToStr(y);
-     Synchronize(@DoRend);
-     y:=yRender;
+       for sx:=0 to 1 do begin
+         for s:=0 to samps-1 do begin
+           temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
+           temp:= temp/ samps;
+            r:= r+temp;
+         end;(*samps*)
+         temp:= ClampVector(r)* 0.25;
+         tColor:=tColor+ temp;
+         r:=CreateVec(0, 0, 0);
+	   end;(*sx*)
+     end;(*sy*)
+     LineBuffer[x]:=tColor;
+   end;(*x*)
+   fStatusText:=StatusText1+'y='+IntToStr(y);
+   Synchronize(@DoRend);
+   y:=yRender;
   END;(*y*)
   DoneCalc:=TRUE;
   Synchronize(@DoneRend);
@@ -735,7 +735,7 @@ BEGIN
       p:=f.z;
     cl:=cl+VecMul(cf,obj.e);
     IF (Depth > 5) OR (p = 0) THEN BEGIN
-       //p=0は要するに発光体に撃ちあたる場合
+       //p=0は要するに発光体に撃ちあたる場合＝発光体は色がぜろだから
       IF (random < p) THEN BEGIN
         f:= f / p;
         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
