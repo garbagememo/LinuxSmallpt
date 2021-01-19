@@ -177,6 +177,7 @@ begin
     TOP:=10;
     Left:=10;
     InitScene;
+   SLR.InitScene(320,240);
     for i:=0 to sc.count-1 do
     SceneCombo.Items.Add(ScName[i]);
     SceneCombo.ItemIndex:=1;
@@ -304,10 +305,15 @@ end;
 { TRenderThread }
 
 procedure TRenderThread.InitRend;
+var
+   SceneRec : SceneRecord;
 begin
    IF AutoFlag = FALSE THEN BEGIN
-      sph:=CopyScene(MainForm.ModelIndex);
-      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
+      SceneRec:=SLR.CopyScene(MainForm.ModelIndex,wide,h);
+      sph:=SceneRec.spl;
+      CamR:=SceneRec.cam;
+//      sph:=CopyScene(MainForm.ModelIndex);
+//      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
    END
    ELSE BEGIN
       CamR:=SR.CurSceneRec.cam;
