@@ -176,9 +176,9 @@ begin
     DoubleBuffered := TRUE;
     TOP:=10;
     Left:=10;
-    InitScene;
-    for i:=0 to sc.count-1 do
-    SceneCombo.Items.Add(ScName[i]);
+    SLR.InitScene(320,240);
+    for i:=0 to SLR.MaxIndex-1 do
+    SceneCombo.Items.Add(SLR.SrA[i].SceneName);
     SceneCombo.ItemIndex:=1;
     ModelIndex:=1;
     AlgolCombo.Items.Add('Original');
@@ -304,10 +304,13 @@ end;
 { TRenderThread }
 
 procedure TRenderThread.InitRend;
+var
+  SceneRec:SceneRecord;
 begin
    IF AutoFlag = FALSE THEN BEGIN
-      ModelList:=CopyScene(MainForm.ModelIndex);
-      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
+      SceneRec:=SLR.CopyScene(MainForm.ModelIndex,wide,h);
+      ModelList:=SceneRec.spl;
+      CamR:=SceneRec.cam;
    END
    ELSE BEGIN
       CamR:=SR.CurSceneRec.cam;
