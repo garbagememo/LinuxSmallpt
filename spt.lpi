@@ -58,7 +58,7 @@
       <Filename Value="spt"/>
     </Target>
     <SearchPaths>
-      <UnitOutputDirectory Value="/home/average/work/fpc/imgrend/out"/>
+      <UnitOutputDirectory Value="/home/average/work/fpc/imgtest/out"/>
     </SearchPaths>
     <CodeGeneration>
       <Optimizations>
