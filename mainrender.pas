@@ -57,7 +57,7 @@ type
     LineBuffer:TLineBuffer;
     wide,h,samps:integer;
     CamR:CameraRecord;
-    ModelList:TList;
+    sph:TList;
     yRender:integer;
     AutoFlag:boolean;
     AutoIndex:integer;
@@ -177,8 +177,8 @@ begin
     TOP:=10;
     Left:=10;
     SLR.InitScene(320,240);
-    for i:=0 to SLR.MaxIndex-1 do
-    SceneCombo.Items.Add(SLR.SrA[i].SceneName);
+    for i:=0 to SLR.MaxIndex do
+      SceneCombo.Items.Add(SLR.SrA[i].SceneName);
     SceneCombo.ItemIndex:=1;
     ModelIndex:=1;
     AlgolCombo.Items.Add('Original');
@@ -305,16 +305,18 @@ end;
 
 procedure TRenderThread.InitRend;
 var
-  SceneRec:SceneRecord;
+   SceneRec : SceneRecord;
 begin
    IF AutoFlag = FALSE THEN BEGIN
       SceneRec:=SLR.CopyScene(MainForm.ModelIndex,wide,h);
-      ModelList:=SceneRec.spl;
+      sph:=SceneRec.spl;
       CamR:=SceneRec.cam;
+//      sph:=CopyScene(MainForm.ModelIndex);
+//      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
    END
    ELSE BEGIN
       CamR:=SR.CurSceneRec.cam;
-      ModelList:=SR.CurSceneRec.spl;
+      sph:=SR.CurSceneRec.spl;
       AutoIndex:=SR.SceneIndex;
    END;
 end;
@@ -378,22 +380,22 @@ begin
      r:=CreateVec(0, 0, 0);
      tColor:=ZeroVec;
      for sy:=0 to 1 do begin
-	for sx:=0 to 1 do begin
-	  for s:=0 to samps-1 do begin
-	    temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
-	    temp:= temp/ samps;
-	    r:= r+temp;
-	  end;(*samps*)
-	  temp:= ClampVector(r)* 0.25;
-	  tColor:=tColor+ temp;
-	  r:=CreateVec(0, 0, 0);
-	end;(*sx*)
-      end;(*sy*)
-      LineBuffer[x]:=tColor;
-     end;(*x*)
-     fStatusText:=StatusText1+'y='+IntToStr(y);
-     Synchronize(@DoRend);
-     y:=yRender;
+       for sx:=0 to 1 do begin
+         for s:=0 to samps-1 do begin
+           temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
+           temp:= temp/ samps;
+            r:= r+temp;
+         end;(*samps*)
+         temp:= ClampVector(r)* 0.25;
+         tColor:=tColor+ temp;
+         r:=CreateVec(0, 0, 0);
+	   end;(*sx*)
+     end;(*sy*)
+     LineBuffer[x]:=tColor;
+   end;(*x*)
+   fStatusText:=StatusText1+'y='+IntToStr(y);
+   Synchronize(@DoRend);
+   y:=yRender;
   END;(*y*)
   DoneCalc:=TRUE;
   Synchronize(@DoneRend);
@@ -416,8 +418,8 @@ var
   i:integer;
 begin
   t:=INF;
-  for i:=0 to ModelList.count-1 do begin
-    d:=SphereClass(ModelList[i]).intersect(r);
+  for i:=0 to sph.count-1 do begin
+    d:=SphereClass(sph[i]).intersect(r);
     if d<t THEN BEGIN
       t:=d;
       id:=i;
@@ -441,7 +443,7 @@ begin
   if intersect(r,t,id)=FALSE then begin
     result:=ZeroVec;exit;
   end;
-  obj:=SphereClass(ModelList[id]);
+  obj:=SphereClass(sph[id]);
   x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
   IF VecDot(n,r.d)<0 THEN nl:=n else nl:=n*-1;
   IF (f.x>f.y)and(f.x>f.z) THEN
@@ -557,7 +559,7 @@ BEGIN
       result:=cl;
       exit;
     END;
-    obj:=SphereClass(ModelList[id]);
+    obj:=SphereClass(sph[id]);
     x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
     IF n*r.d<0 THEN nl:=n ELSE nl:=n*-1;
     IF (f.x>f.y)and(f.x>f.z) THEN
@@ -610,8 +612,8 @@ BEGIN
        // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
-        for i:=0 to ModelList.count-1 do BEGIN
-          s:=SphereClass(ModelList[i]);
+        for i:=0 to sph.count-1 do BEGIN
+          s:=SphereClass(sph[i]);
           IF (i=tid) THEN BEGIN
             continue;
           END;
@@ -726,7 +728,7 @@ BEGIN
       result:=cl;
       exit;
     END;
-    obj:=SphereClass(ModelList[id]);
+    obj:=SphereClass(sph[id]);
     x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
     nrd:=n*r.d;
     IF nrd<0 THEN nl:=n ELSE nl:=n*-1;
