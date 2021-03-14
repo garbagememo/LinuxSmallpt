@@ -18,7 +18,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="MainRender"/>
-        <IsVisibleTab Value="True"/>
         <TopLine Value="171"/>
         <CursorPos X="48" Y="181"/>
         <UsageCount Value="41"/>
@@ -39,6 +38,7 @@
       </Unit3>
       <Unit4>
         <Filename Value="uVect.pas"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="83"/>
         <CursorPos X="14" Y="91"/>
@@ -55,8 +55,8 @@
       <Unit6>
         <Filename Value="uModel.pas"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="121"/>
-        <CursorPos X="50" Y="135"/>
+        <TopLine Value="76"/>
+        <CursorPos X="5" Y="93"/>
         <UsageCount Value="16"/>
         <Loaded Value="True"/>
       </Unit6>

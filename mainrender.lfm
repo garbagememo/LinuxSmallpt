@@ -1,66 +1,66 @@
 object MainForm: TMainForm
   Left = 267
-  Height = 399
+  Height = 360
   Top = 134
-  Width = 537
+  Width = 526
   HorzScrollBar.Page = 407
   VertScrollBar.Page = 72
   Caption = 'MainForm'
-  ClientHeight = 399
-  ClientWidth = 537
+  ClientHeight = 360
+  ClientWidth = 526
   OnCreate = FormCreate
   LCLVersion = '2.0.10.0'
   object Label1: TLabel
     Left = 65
-    Height = 17
-    Top = 19
-    Width = 40
+    Height = 16
+    Top = 8
+    Width = 36
     Caption = 'Width'
     ParentColor = False
   end
   object Label2: TLabel
     Left = 61
-    Height = 17
-    Top = 54
-    Width = 44
+    Height = 16
+    Top = 40
+    Width = 40
     Caption = 'Height'
     ParentColor = False
   end
   object Label3: TLabel
-    Left = 16
-    Height = 17
-    Top = 94
-    Width = 89
+    Left = 22
+    Height = 16
+    Top = 72
+    Width = 79
     Caption = 'SampleCount'
     ParentColor = False
   end
   object Label4: TLabel
-    Left = 51
-    Height = 17
-    Top = 134
-    Width = 54
+    Left = 48
+    Height = 16
+    Top = 104
+    Width = 47
     Caption = 'Threads'
     ParentColor = False
   end
   object Label5: TLabel
-    Left = 45
-    Height = 17
-    Top = 168
-    Width = 60
+    Left = 43
+    Height = 16
+    Top = 136
+    Width = 52
     Caption = '経過時間'
     ParentColor = False
   end
   object lblTime: TLabel
     Left = 112
-    Height = 17
-    Top = 168
-    Width = 62
+    Height = 16
+    Top = 136
+    Width = 57
     Caption = '00:00:00'
     ParentColor = False
   end
   object StrWidth: TEdit
     Left = 112
-    Height = 35
+    Height = 24
     Top = 8
     Width = 80
     TabOrder = 0
@@ -68,24 +68,24 @@ object MainForm: TMainForm
   end
   object StrHeight: TEdit
     Left = 112
-    Height = 35
-    Top = 48
+    Height = 24
+    Top = 40
     Width = 80
     TabOrder = 1
     Text = '240'
   end
   object StrSampleCount: TEdit
     Left = 112
-    Height = 35
-    Top = 88
+    Height = 24
+    Top = 72
     Width = 80
     TabOrder = 2
     Text = '16'
   end
   object StrThreadCount: TEdit
     Left = 112
-    Height = 35
-    Top = 128
+    Height = 24
+    Top = 104
     Width = 80
     TabOrder = 3
     Text = '4'
@@ -93,7 +93,7 @@ object MainForm: TMainForm
   object cmdRender: TButton
     Left = 112
     Height = 28
-    Top = 192
+    Top = 160
     Width = 80
     Caption = 'Render'
     Color = clSkyBlue
@@ -109,7 +109,7 @@ object MainForm: TMainForm
   object cmdSave: TButton
     Left = 112
     Height = 28
-    Top = 256
+    Top = 224
     Width = 80
     Caption = 'Save'
     OnClick = cmdSaveClick
@@ -117,51 +117,51 @@ object MainForm: TMainForm
   end
   object SceneCombo: TComboBox
     Left = 16
-    Height = 35
-    Top = 303
+    Height = 24
+    Top = 272
     Width = 176
-    ItemHeight = 0
+    ItemHeight = 16
     OnChange = SceneComboChange
     TabOrder = 6
     Text = 'SceneCombo'
   end
   object AlgolCombo: TComboBox
     Left = 16
-    Height = 35
-    Top = 352
-    Width = 173
-    ItemHeight = 0
+    Height = 24
+    Top = 320
+    Width = 176
+    ItemHeight = 16
     OnChange = AlgolComboChange
     TabOrder = 7
     Text = 'render-algolthm'
   end
   object Model: TLabel
-    Left = 16
-    Height = 17
-    Top = 288
-    Width = 41
+    Left = 22
+    Height = 16
+    Top = 256
+    Width = 37
     Caption = 'Model'
     ParentColor = False
   end
   object Aloglthm: TLabel
     Left = 16
-    Height = 17
-    Top = 336
-    Width = 66
+    Height = 16
+    Top = 304
+    Width = 59
     Caption = 'Algorithm'
     ParentColor = False
   end
   object cmdAuto: TButton
     Left = 112
     Height = 28
-    Top = 224
+    Top = 192
     Width = 80
     Caption = 'AutoRun'
     OnClick = cmdAutoClick
     TabOrder = 8
   end
   object SaveDlg: TSaveDialog
-    Left = 32
-    Top = 208
+    Left = 24
+    Top = 168
   end
 end
