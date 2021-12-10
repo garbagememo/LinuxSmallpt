@@ -68,7 +68,7 @@ type
   TNERenderThread = CLASS(TRenderThread)
     function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
   END;
-  TNRenderThread= CLASS(TRenderThread)
+  TLoopRenderThread= CLASS(TRenderThread)
     function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
   END;
 
@@ -229,7 +229,7 @@ begin
       IF AlgolIndex=0 THEN
 	 RenderThread:=TRenderThread.Create(True);
       IF AlgolIndex=2 THEN
-	 RenderThread:=TNRenderThread.Create(True);
+	 RenderThread:=TLoopRenderThread.Create(True);
       // True parameter it doesnt start automatically
       if Assigned(RenderThread.FatalException) then
 	 raise RenderThread.FatalException;
@@ -547,7 +547,7 @@ var
   tDir:VecRecord;
   EL,sw,su,sv,l,tw,tu,tv:VecRecord;
   cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
-  cl,cf,bcf:VecRecord;
+  cl,cf:VecRecord;
   E:integer;
 BEGIN
 //writeln(' DebugY=',DebugY,' DebugX=',DebugX);
@@ -574,17 +574,13 @@ BEGIN
     IF (Depth > 5) OR (p = 0) THEN
        IF (random < p) THEN BEGIN
          f:= f / p;
-         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
-           Result := cl;
-           exit;
-         END;
        END
        ELSE BEGIN
          Result := cl;
          exit;
        END;
 
-    bcf:=cf;cf:=VecMul(cf,f);
+    cf:=VecMul(cf,f);
     CASE obj.refl OF
       DIFF:BEGIN
         r1  := M_2PI * random;
@@ -608,8 +604,8 @@ BEGIN
         v:= v*(ss * r2s); //4* sin
         w:= w*( sqrt(1 - r2));  //3* sqrt
 
-	d:=Vector_Add3(u, v, w);d:=VecNorm(d);
-       // Loop over any lights
+        d:=Vector_Add3(u, v, w);d:=VecNorm(d);
+        // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
         for i:=0 to sph.count-1 do BEGIN
@@ -620,7 +616,7 @@ BEGIN
           IF (s.e.x<=0) and  (s.e.y<=0) and (s.e.z<=0)  THEN continue; // skip non-lights
           sw:=s.p-x;
           tr:=sw*sw;  tr:=s.rad2/tr;
-	  IF abs(sw.x)/sqrt(tr)>0.1 THEN 
+          IF abs(sw.x)/sqrt(tr)>0.1 THEN 
             su:=VecNorm(CreateVec(0,1,0)/sw) 
           ELSE 
             su:=VecNorm(CreateVec(1,0,0)/sw);
@@ -629,16 +625,16 @@ BEGIN
             (*半球の内外=cos_aがマイナスとsin_aが＋、－で場合分け*)
             (*半球内部なら乱反射した寄与全てを取ればよい・・はず*)
             eps1:=M_2PI*random;eps2:=random;eps2s:=sqrt(eps2);
-            sincos(eps,ss,cc);
+            sincos(eps1,ss,cc);
             tu:=u*(cc*eps2s);tu:=tu+v*(ss*eps2s);tu:=tu+w*sqrt(1-eps2);
             l:=VecNorm(tu);
-            IF intersect(CreateRay(x,l),t,id) THEN BEGIN
-              IF id=i THEN BEGIN
-                tr:=l*nl;
-                tw:=s.e*tr;
-                EL:=EL+VecMul(f,tw);
-              END;
-            END;
+             IF intersect(CreateRay(x,l),t,id) THEN BEGIN
+                IF id=i THEN BEGIN
+                   tr:=l*nl;
+                   tw:=s.e*tr;
+                   EL:=EL+VecMul(f,tw);
+                END;
+             END;
           END
           ELSE BEGIN //半球外部の場合;
             cos_a_max := sqrt(1-tr );
@@ -647,8 +643,7 @@ BEGIN
             sin_a := sqrt(1-cos_a*cos_a);
             IF (1-2*random)<0 THEN sin_a:=-sin_a; 
             phi := M_2PI*eps2;
-            tw:=sw*(cos(phi)*sin_a);tw:=tw+sv*(sin(phi)*sin_a);tw:=tw+sw*cos_a;
-            l:=VecNorm(tw);
+             l:=VecNorm(sw*(cos(phi)*sin_a)+sv*(sin(phi)*sin_a)+sw*cos_a);
             IF (intersect(CreateRay(x,l), t, id) ) THEN BEGIN 
               IF id=i THEN BEGIN  // shadow ray
                 omega := 2*PI*(1-cos_a_max);
@@ -661,13 +656,13 @@ BEGIN
           END;
         END;(*for*)
         tw:=obj.e*e+EL;
-        cl:= cl+VecMul(bcf,tw );
+        cl:= cl+VecMul(cf,tw );
         E:=0;
         r:=CreateRay(x,d)
       END;(*DIFF*)
       SPEC:BEGIN
         tw:=obj.e*e;
-        cl:=cl+VecMul(bcf,tw);
+        cl:=cl+VecMul(cf,tw);
         E:=1;tv:=n*2*(n*r.d) ;tv:=r.d-tv;
         r:=CreateRay(x,tv);
       END;(*SPEC*)
@@ -678,7 +673,7 @@ BEGIN
         nc:=1;nt:=1.5; IF into THEN nnt:=nc/nt ELSE nnt:=nt/nc; ddn:=r.d*nl;
         cos2t:=1-nnt*nnt*(1-ddn*ddn);
         IF cos2t<0 THEN BEGIN   // Total internal reflection
-          cl:=cl+VecMul(bcf,obj.e*E);
+          cl:=cl+VecMul(cf,obj.e*E);
           E:=1;
           r:=RefRay;
           continue;
@@ -690,13 +685,13 @@ BEGIN
         Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
         IF random<p THEN BEGIN// 反射
           cf:=cf*RP;
-          cl:=cl+VecMul(bcf,obj.e*E);
+          cl:=cl+VecMul(cf,obj.e*E);
           E:=1;
           r:=RefRay;
         END
         ELSE BEGIN//屈折
           cf:=cf*TP;
-          cl:=cl+VecMul(bcf,obj.e*E);
+          cl:=cl+VecMul(cf,obj.e*E);
           E:=1;
           r:=CreateRay(x,tdir);
         END
@@ -706,7 +701,7 @@ BEGIN
 END;
 
 
-function TNRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
+function TLoopRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
 var
   id:integer;
   obj:SphereClass;
@@ -810,4 +805,5 @@ END;
 
 BEGIN
 END.
+
 
