@@ -19,16 +19,16 @@
  ***************************************************************************
 
 }
-unit MainRender;
+UNIT MainRender;
 
 {$mode objfpc}{$H+}
 
-interface
+INTERFACE
 
-uses
+USES
   LCLIntf, LCLType,
   Classes, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,LMessages,
-  SysUtils, uVect,uModel,math;
+  SysUtils, uVect,uModel,uLightPath,math;
 
 CONST
   MSG_NEWLINE	     = WM_USER + 0;
@@ -38,43 +38,46 @@ CONST
   AutoDir	     = 'auto';
    PathSeparator     = '/';(*IF Windows THEN \*)
 
-type
+TYPE
   { TRenderThread }
 
-  TLineBuffer=array[0..1980] of VecRecord;
+  TLineBuffer=ARRAY[0..1980] OF VecRecord;
   (*TColor=r,g,b*)
 
   TRenderThread = CLASS(TThread)
-  private
+  PRIVATE
     fStatusText: string;
-    DoneCalc:boolean;
-    procedure InitRend;
-    procedure DoRend;
-    procedure DoneRend;
-  protected
-    procedure Execute; override;
-  public
+    DoneCalc:BOOLEAN;
+    PROCEDURE InitRend;
+    PROCEDURE DoRend;
+    PROCEDURE DoneRend;
+  PROTECTED
+    PROCEDURE Execute; override;
+  PUBLIC
     LineBuffer:TLineBuffer;
-    wide,h,samps:integer;
-    CamR:CameraRecord;
-    sph:TList;
-    yRender:integer;
-    AutoFlag:boolean;
-    AutoIndex:integer;
-    function Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
-    function Radiance(r:RayRecord;depth:integer):VecRecord;virtual;
-    constructor Create(CreateSuspended: boolean);
-  end;
+    wide,h,samps:INTEGER;
+    MSR:SceneRecord;
+    yRender:INTEGER;
+    AutoFlag:BOOLEAN;
+    AutoIndex:INTEGER;
+    FUNCTION Radiance(r:RayRecord;depth:INTEGER):VecRecord;virtual;
+    CONSTRUCTOR Create(CreateSuspended: BOOLEAN);
+  END;
   TNERenderThread = CLASS(TRenderThread)
-    function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
+    FUNCTION Radiance(r:RayRecord;depth:INTEGER):VecRecord;OverRide;
   END;
   TLoopRenderThread= CLASS(TRenderThread)
-    function Radiance(r:RayRecord;depth:integer):VecRecord;OverRide;
+    FUNCTION Radiance(r:RayRecord;depth:INTEGER):VecRecord;OverRide;
   END;
+  TLightPathRenderThread=CLASS(TRenderThread)
+    LPList:LightPathList;
+    FUNCTION Radiance(r:RayRecord;depth:INTEGER):VecRecord;OverRide;
+  END;
+
 
   { TMainForm }
 
-  TMainForm = class(TForm)
+  TMainForm = CLASS(TForm)
     cmdAuto: TButton;
     cmdSave: TButton;
     cmdRender: TButton;
@@ -95,35 +98,35 @@ type
     Label5: TLabel;
     lblTime: TLabel;
 
-    procedure AlgolComboChange(Sender: TObject);
-    procedure cmdAutoClick(Sender: TObject);
-    procedure cmdRenderClick(Sender: TObject);
-    procedure cmdSaveClick(Sender: TObject);
-    procedure SceneComboChange(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
-    procedure SaveDlgClick(Sender: TObject);
-  private
-    ModelIndex:Integer;
-    AlgolIndex:integer;
-    MinimamHeight:integer;
-  public
-    ThreadNum:integer;
-    samps:integer;
+    PROCEDURE AlgolComboChange(Sender: TObject);
+    PROCEDURE cmdAutoClick(Sender: TObject);
+    PROCEDURE cmdRenderClick(Sender: TObject);
+    PROCEDURE cmdSaveClick(Sender: TObject);
+    PROCEDURE SceneComboChange(Sender: TObject);
+    PROCEDURE FormCreate(Sender: TObject);
+    PROCEDURE SaveDlgClick(Sender: TObject);
+  PRIVATE
+    ModelIndex:INTEGER;
+    AlgolIndex:INTEGER;
+    MinimamHeight:INTEGER;
+  PUBLIC
+    ThreadNum:INTEGER;
+    samps:INTEGER;
     StartTime:Int64;
     ThreadList:TList;
-    yAxis:integer;
-    AutoFlag:boolean;
-    procedure RenderSetup;
-    function isAllDone:boolean;
-    function GetYAxis:integer;
+    yAxis:INTEGER;
+    AutoFlag:BOOLEAN;
+    PROCEDURE RenderSetup;
+    FUNCTION isAllDone:BOOLEAN;
+    FUNCTION GetYAxis:INTEGER;
     PROCEDURE MSGDrawNextScene(VAR Message:TLMessage);MESSAGE MSG_DrawNextScene;
-  end;
+  END;
 
     
-var
+VAR
   MainForm: TMainForm;
 
-implementation
+IMPLEMENTATION
 
 {$R *.lfm}
 
@@ -150,58 +153,59 @@ BEGIN
   Result := H + ':' + M + ':' + S;
 END;
 
-function TMainForm.isAllDone:boolean;
-var
-  i:integer;
-begin
+FUNCTION TMainForm.isAllDone:BOOLEAN;
+VAR
+  i:INTEGER;
+BEGIN
   isAllDone:=TRUE;
-  for i:=0 to ThreadNum-1 do begin
+  FOR i:=0 TO ThreadNum-1 DO BEGIN
      IF TRenderThread(ThreadList[i]).DoneCalc=FALSE THEN BEGIN
         isAllDone:=FALSE;
-       exit;
-     end;
-  end;
-end;
+       EXIT;
+     END;
+  END;
+END;
 
-function TMainForm.GetYAxis:integer;
-begin
+FUNCTION TMainForm.GetYAxis:INTEGER;
+BEGIN
    yAxis:=yAxis+1;
    result:=yAxis;
-end;
+END;
 
-procedure TMainForm.FormCreate(Sender: TObject);
-var
-  i:integer;
-begin
+PROCEDURE TMainForm.FormCreate(Sender: TObject);
+VAR
+  i:INTEGER;
+BEGIN
     DoubleBuffered := TRUE;
     TOP:=10;
     Left:=10;
     SLR.InitScene(320,240);
-    for i:=0 to SLR.MaxIndex do
+    FOR i:=0 TO SLR.MaxIndex DO
       SceneCombo.Items.Add(SLR.SrA[i].SceneName);
     SceneCombo.ItemIndex:=1;
     ModelIndex:=1;
     AlgolCombo.Items.Add('Original');
     AlgolCombo.Items.Add('Next Event');
     AlgolCombo.Items.Add('Non Loop');
+    AlgolCombo.Items.Add('LightPath');
     AlgolCombo.ItemIndex:=1;
     AlgolIndex:=1;
     MinimamHeight:=Height;
     AutoFlag:=FALSE;
     Randomize;
-end;
+END;
 
-procedure TMainForm.SaveDlgClick(Sender: TObject);
-begin
+PROCEDURE TMainForm.SaveDlgClick(Sender: TObject);
+BEGIN
   IF (SaveDlg.Execute) THEN
     imgRender.Picture.SaveToFile(SaveDlg.FileName);
-end;
+END;
 
-procedure TMainForm.RenderSetup;
-var
+PROCEDURE TMainForm.RenderSetup;
+VAR
   RenderThread: TRenderThread;
-  i:integer;
-begin
+  i:INTEGER;
+BEGIN
    IF Assigned(ThreadList) THEN BEGIN
       ThreadList.Destroy;
    END;
@@ -224,14 +228,17 @@ begin
    ThreadList:=TList.Create;
    yAxis:=-1;
    FOR i:=0 TO ThreadNum-1 DO BEGIN
-      IF AlgolIndex=1 then
+      IF AlgolIndex=1 THEN
 	 RenderThread:=TNERenderThread.Create(TRUE);
       IF AlgolIndex=0 THEN
 	 RenderThread:=TRenderThread.Create(True);
       IF AlgolIndex=2 THEN
 	 RenderThread:=TLoopRenderThread.Create(True);
+      IF AlgolIndex=3 THEN BEGIN
+         RenderThread:=TLightPathRenderThread.Create(True);
+      END;
       // True parameter it doesnt start automatically
-      if Assigned(RenderThread.FatalException) then
+      IF Assigned(RenderThread.FatalException) THEN
 	 raise RenderThread.FatalException;
       RenderThread.wide:=imgRender.Width;
       RenderThread.h:=imgRender.Height;
@@ -239,25 +246,25 @@ begin
       RenderThread.yRender:=GetYAxis;
       RenderThread.DoneCalc:=FALSE;
       ThreadList.Add(RenderThread);
-   end;
+   END;
    StartTime:=GetTickCount64; 
-end;
-procedure TMainForm.cmdRenderClick(Sender: TObject);
-var
+END;
+PROCEDURE TMainForm.cmdRenderClick(Sender: TObject);
+VAR
   RenderThread: TRenderThread;
-  i:integer;
-begin
+  i:INTEGER;
+BEGIN
    RenderSetup;
    FOR i:=0 TO ThreadList.Count-1 DO BEGIN
-     TRenderThread(ThreadList[i]).AutoFlag:=false;
+     TRenderThread(ThreadList[i]).AutoFlag:=FALSE;
      TRenderThread(ThreadList[i]).Start;
    END;
-end;
+END;
 PROCEDURE TMainForm.MSGDrawNextScene(VAR Message : TLMessage);
-var
+VAR
   SceneRec:SceneRecord;
   RenderThread: TRenderThread;
-  i:integer;
+  i:INTEGER;
 BEGIN
    IF SR.GetNextScene(StrToInt(StrWidth.Text),StrToInt(StrHeight.Text) ) THEN BEGIN
       RenderSetup;
@@ -273,66 +280,65 @@ BEGIN
 
 END;
 
-procedure TMainForm.AlgolComboChange(Sender: TObject);
-begin
+PROCEDURE TMainForm.AlgolComboChange(Sender: TObject);
+BEGIN
   AlgolIndex:=AlgolCombo.ItemIndex;
-end;
+END;
 
-procedure TMainForm.cmdAutoClick(Sender: TObject);
-begin
+PROCEDURE TMainForm.cmdAutoClick(Sender: TObject);
+BEGIN
    AutoFlag:=TRUE;
    SR.MakeSnap;
-   IF Not DirectoryExists(AutoDir) then
-      IF Not CreateDir (AutoDir) THEN
-	 Writeln ('Failed to create directory !')
-      else
-	 Writeln ('Created "NewDir" directory');
+   IF NOT DirectoryExists(AutoDir) THEN
+      IF NOT CreateDir (AutoDir) THEN
+	 WRITELN ('Failed to create directory !')
+      ELSE
+	 WRITELN ('Created "NewDir" directory');
    PostMessage(Handle,MSG_DrawNextScene,0,0);
-end;
+END;
 
-procedure TMainForm.cmdSaveClick(Sender: TObject);
-begin
+PROCEDURE TMainForm.cmdSaveClick(Sender: TObject);
+BEGIN
   IF SaveDlg.Execute THEN ImgRender.Picture.SaveToFile(SaveDlg.Filename);
-end;
+END;
 
-procedure TMainForm.SceneComboChange(Sender: TObject);
-begin
+PROCEDURE TMainForm.SceneComboChange(Sender: TObject);
+BEGIN
   ModelIndex:=SceneCombo.ItemIndex;
-end;
+END;
 
 
 { TRenderThread }
 
-procedure TRenderThread.InitRend;
-var
-   SceneRec : SceneRecord;
-begin
+PROCEDURE TRenderThread.InitRend;
+BEGIN
    IF AutoFlag = FALSE THEN BEGIN
-      SceneRec:=SLR.CopyScene(MainForm.ModelIndex,wide,h);
-      sph:=SceneRec.spl;
-      CamR:=SceneRec.cam;
+      MSR:=SLR.CopyScene(MainForm.ModelIndex,wide,h);
 //      sph:=CopyScene(MainForm.ModelIndex);
 //      CamR.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),wide,h,0.5135,140);
    END
    ELSE BEGIN
-      CamR:=SR.CurSceneRec.cam;
-      sph:=SR.CurSceneRec.spl;
+      MSR.Cam:=SR.CurSceneRec.cam;
+      MSR.spl:=SR.CurSceneRec.spl;
       AutoIndex:=SR.SceneIndex;
    END;
-end;
-procedure TRenderThread.DoRend;
+   IF MainForm.AlgolIndex=3 THEN BEGIN
+     TLightPathRenderThread(self).LPList.SetScene(MSR);
+   END;
+END;
+PROCEDURE TRenderThread.DoRend;
 // this method is only called by Synchronize(@ShowStatus) and therefore
 // executed by the main thread
 // The main thread can access GUI elements, for example MainForm.Caption.
-var
-  x : integer;
+VAR
+  x : INTEGER;
 BEGIN
    IF AutoFlag THEN
       MainForm.Caption:='AutoIndex='+IntToStr(AutoIndex)+':'+fStatusText
    ELSE
       MainForm.Caption := fStatusText;
   IF DoneCalc=FALSE THEN BEGIN
-    FOR x:=0 to Wide-1 DO BEGIN
+    FOR x:=0 TO Wide-1 DO BEGIN
       MainForm.ImgRender.Canvas.Pixels[x,yRender]:=
  	     ColToByte(LineBuffer[x].x)+         //red
              ColToByte(LineBuffer[x].y)*256+     //green
@@ -342,8 +348,8 @@ BEGIN
     yRender:=MainForm.GetYAxis;
   END;
 END;
-procedure TRenderThread.DoneRend;
-var
+PROCEDURE TRenderThread.DoneRend;
+VAR
    st : string;
 BEGIN
    AutoFlag:=MainForm.AutoFlag;
@@ -354,7 +360,7 @@ BEGIN
       
       IF AutoFlag THEN BEGIN
 	 st:=IntToStr(SR.SceneIndex)+'.png';
-	 while length(st)<7 do st:='0'+st;
+	 WHILE length(st)<7 DO st:='0'+st;
 	 MainForm.imgRender.Picture.SaveToFile(AutoDir+PathSeparator+st);
 	 PostMessage(MainForm.handle,MSG_DrawNextScene,0,0);
       END
@@ -364,89 +370,73 @@ BEGIN
   END;
 END;
 
-procedure TRenderThread.Execute;
-var
-  x,y,sx,sy,s:integer;
+PROCEDURE TRenderThread.Execute;
+VAR
+  x,y,sx,sy,s:INTEGER;
   temp       : VecRecord;
   tColor,r : VecRecord;
   StatusText1:string;
-begin
+BEGIN
   y:=yRender;
   Synchronize(@InitRend); 
   fStatusText := 'Render Running ...';
   StatusText1:=fStatusText;
-  while y<h do begin
-    for x:=0 to wide-1 do begin
+  WHILE y<h DO BEGIN
+    FOR x:=0 TO wide-1 DO BEGIN
      r:=CreateVec(0, 0, 0);
      tColor:=ZeroVec;
-     for sy:=0 to 1 do begin
-       for sx:=0 to 1 do begin
-         for s:=0 to samps-1 do begin
-           temp:=Radiance(CamR.Ray(x,y,sx,sy),0);
+     FOR sy:=0 TO 1 DO BEGIN
+       FOR sx:=0 TO 1 DO BEGIN
+         FOR s:=0 TO samps-1 DO BEGIN
+           temp:=Radiance(MSR.Cam.Ray(x,y,sx,sy),0);
            temp:= temp/ samps;
             r:= r+temp;
-         end;(*samps*)
+         END;(*samps*)
          temp:= ClampVector(r)* 0.25;
          tColor:=tColor+ temp;
          r:=CreateVec(0, 0, 0);
-	   end;(*sx*)
-     end;(*sy*)
+	   END;(*sx*)
+     END;(*sy*)
      LineBuffer[x]:=tColor;
-   end;(*x*)
+   END;(*x*)
    fStatusText:=StatusText1+'y='+IntToStr(y);
    Synchronize(@DoRend);
    y:=yRender;
   END;(*y*)
   DoneCalc:=TRUE;
   Synchronize(@DoneRend);
- end;
+ END;
 
 
-constructor TRenderThread.Create(CreateSuspended: boolean);
-begin
+CONSTRUCTOR TRenderThread.Create(CreateSuspended: BOOLEAN);
+BEGIN
   FreeOnTerminate := True;
   DoneCalc:=FALSE;
   yRender:=0;
   inherited Create(CreateSuspended);
-end;
-
-
-
-function TRenderThread.Intersect(const r:RayRecord;var t:real; var id:integer):boolean;
-var
-  d:real;
-  i:integer;
-begin
-  t:=INF;
-  for i:=0 to sph.count-1 do begin
-    d:=SphereClass(sph[i]).intersect(r);
-    if d<t THEN BEGIN
-      t:=d;
-      id:=i;
-    END;
-  end;
-  result:=(t<inf);
 END;
 
-function TRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
-var
-  id:integer;
+
+
+FUNCTION TRenderThread.Radiance(r:RayRecord;depth:INTEGER):VecRecord;
+VAR
+  id:INTEGER;
   obj:SphereClass;
   x,n,f,nl,u,v,w,d:VecRecord;
   p,r1,r2,r2s,t:real;
-  into:boolean;
+  into:BOOLEAN;
   RefRay:RayRecord;
   nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
   tDir:VecRecord;
-begin
+BEGIN
   id:=0;depth:=depth+1;
-  if intersect(r,t,id)=FALSE then begin
-    result:=ZeroVec;exit;
-  end;
-  obj:=SphereClass(sph[id]);
+  IF MSR.intersect(r,t,id)=FALSE THEN BEGIN
+    result:=ZeroVec;EXIT;
+  END;
+  obj:=SphereClass(MSR.spl[id]);
   x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
-  IF VecDot(n,r.d)<0 THEN nl:=n else nl:=n*-1;
-  IF (f.x>f.y)and(f.x>f.z) THEN
+  IF VecDot(n,r.d)<0 THEN nl:=n ELSE nl:=n*-1;
+  IF (f.x>f.y)AND(f.x>f.z) THEN
     p:=f.x
   ELSE IF f.y>f.z THEN 
     p:=f.y
@@ -457,12 +447,12 @@ begin
         f:= f / p;
         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
           Result := obj.e;
-          exit;
+          EXIT;
         END;
       END
       ELSE BEGIN
         Result := obj.e;
-        exit;
+        EXIT;
       END;
   END;
   CASE obj.refl OF
@@ -484,19 +474,19 @@ begin
     REFR:BEGIN
       RefRay:=CreateRay(x,r.d-n*2*(n*r.d) );
       into:= (n*nl>0);
-      nc:=1;nt:=1.5; if into then nnt:=nc/nt else nnt:=nt/nc; ddn:=r.d*nl; 
+      nc:=1;nt:=1.5; IF into THEN nnt:=nc/nt ELSE nnt:=nt/nc; ddn:=r.d*nl; 
       cos2t:=1-nnt*nnt*(1-ddn*ddn);
-      if cos2t<0 then begin   // Total internal reflection
+      IF cos2t<0 THEN BEGIN   // Total internal reflection
         result:=obj.e + VecMul(f,Radiance(RefRay,depth));
-        exit;
-      end;
-      if into then q:=1 else q:=-1;
+        EXIT;
+      END;
+      IF into THEN q:=1 ELSE q:=-1;
       tdir := VecNorm(r.d*nnt - n*(q*(ddn*nnt+sqrt(cos2t))));
-      IF into then Q:=-ddn else Q:=tdir*n;
+      IF into THEN Q:=-ddn ELSE Q:=tdir*n;
       a:=nt-nc; b:=nt+nc; R0:=a*a/(b*b); c := 1-Q;
       Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
       IF depth>2 THEN BEGIN
-        IF random<p then // 反射
+        IF random<p THEN // 反射
           result:=obj.e+VecMul(f,Radiance(RefRay,depth)*RP)
         ELSE //屈折
           result:=obj.e+VecMul(f,Radiance(CreateRay(x,tdir),depth)*TP);
@@ -506,7 +496,7 @@ begin
       END;
     END;(*REFR*)
   END;(*CASE*)
-end;
+END;
 FUNCTION Utils_kahanSum3(a, b, c : real) : real;
 VAR
   sum,cc,y,t: real;
@@ -535,34 +525,34 @@ BEGIN
 END;
 
 
-function TNERenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
-var
-  id,i,tid:integer;
+FUNCTION TNERenderThread.Radiance(r:RayRecord;depth:INTEGER):VecRecord;
+VAR
+  id,i,tid:INTEGER;
   obj,s:SphereClass;
   x,n,f,nl,u,v,w,d:VecRecord;
   p,r1,r2,r2s,t,m1,ss,cc:real;
-  into:boolean;
+  into:BOOLEAN;
   RefRay:RayRecord;
   nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
   tDir:VecRecord;
   EL,sw,su,sv,l,tw,tu,tv:VecRecord;
   cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
   cl,cf:VecRecord;
-  E:integer;
+  E:INTEGER;
 BEGIN
 //writeln(' DebugY=',DebugY,' DebugX=',DebugX);
   depth:=0;
   id:=0;cl:=ZeroVec;cf:=CreateVec(1,1,1);E:=1;
   WHILE (TRUE) DO BEGIN
     Inc(depth);
-    IF intersect(r,t,id)=FALSE THEN BEGIN
+    IF MSR.intersect(r,t,id)=FALSE THEN BEGIN
       result:=cl;
-      exit;
+      EXIT;
     END;
-    obj:=SphereClass(sph[id]);
+    obj:=SphereClass(MSR.spl[id]);
     x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
     IF n*r.d<0 THEN nl:=n ELSE nl:=n*-1;
-    IF (f.x>f.y)and(f.x>f.z) THEN
+    IF (f.x>f.y)AND(f.x>f.z) THEN
       p:=f.x
     ELSE IF f.y>f.z THEN
       p:=f.y
@@ -577,7 +567,7 @@ BEGIN
        END
        ELSE BEGIN
          Result := cl;
-         exit;
+         EXIT;
        END;
 
     cf:=VecMul(cf,f);
@@ -597,7 +587,7 @@ BEGIN
           m1 := 1/sqrt(w.z*w.z+w.y*w.y);
           u := CreateVec(0, -w.z*m1, w.y*m1);
           v := CreateVec(w.y*u.z-w.z*u.y, -w.x*u.z, w.x*u.y); //4* vs 6*
-        end;
+        END;
         sincos(r1,ss,cc);
 
         u:= u*( cc * r2s); //4* cos
@@ -608,12 +598,12 @@ BEGIN
         // Loop over any lights
         EL:=ZeroVec;
         tid:=id;
-        for i:=0 to sph.count-1 do BEGIN
-          s:=SphereClass(sph[i]);
+        FOR i:=0 TO MSR.spl.count-1 DO BEGIN
+          s:=SphereClass(MSR.spl[i]);
           IF (i=tid) THEN BEGIN
             continue;
           END;
-          IF (s.e.x<=0) and  (s.e.y<=0) and (s.e.z<=0)  THEN continue; // skip non-lights
+          IF (s.e.x<=0) AND  (s.e.y<=0) AND (s.e.z<=0)  THEN continue; // skip non-lights
           sw:=s.p-x;
           tr:=sw*sw;  tr:=s.rad2/tr;
           IF abs(sw.x)/sqrt(tr)>0.1 THEN 
@@ -628,7 +618,7 @@ BEGIN
             sincos(eps1,ss,cc);
             tu:=u*(cc*eps2s);tu:=tu+v*(ss*eps2s);tu:=tu+w*sqrt(1-eps2);
             l:=VecNorm(tu);
-             IF intersect(CreateRay(x,l),t,id) THEN BEGIN
+             IF MSR.intersect(CreateRay(x,l),t,id) THEN BEGIN
                 IF id=i THEN BEGIN
                    tr:=l*nl;
                    tw:=s.e*tr;
@@ -644,7 +634,7 @@ BEGIN
             IF (1-2*random)<0 THEN sin_a:=-sin_a; 
             phi := M_2PI*eps2;
              l:=VecNorm(sw*(cos(phi)*sin_a)+sv*(sin(phi)*sin_a)+sw*cos_a);
-            IF (intersect(CreateRay(x,l), t, id) ) THEN BEGIN 
+            IF (MSR.intersect(CreateRay(x,l), t, id) ) THEN BEGIN 
               IF id=i THEN BEGIN  // shadow ray
                 omega := 2*PI*(1-cos_a_max);
                 tr:=l*nl;
@@ -701,13 +691,13 @@ BEGIN
 END;
 
 
-function TLoopRenderThread.Radiance(r:RayRecord;depth:integer):VecRecord;
-var
-  id:integer;
+FUNCTION TLoopRenderThread.Radiance(r:RayRecord;depth:INTEGER):VecRecord;
+VAR
+  id:INTEGER;
   obj:SphereClass;
   x,n,f,nl,u,v,w,d:VecRecord;
   p,r1,r2,r2s,t,ss,cc,nrd:real;
-  into:boolean;
+  into:BOOLEAN;
   RefRay:RayRecord;
   nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
   tDir:VecRecord;
@@ -719,15 +709,15 @@ BEGIN
   id:=0;cl:=ZeroVec;cf:=OneVec;
   WHILE (TRUE) DO BEGIN
     Inc(depth);
-    IF intersect(r,t,id)=FALSE THEN BEGIN
+    IF MSR.intersect(r,t,id)=FALSE THEN BEGIN
       result:=cl;
-      exit;
+      EXIT;
     END;
-    obj:=SphereClass(sph[id]);
+    obj:=SphereClass(MSR.spl[id]);
     x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
     nrd:=n*r.d;
     IF nrd<0 THEN nl:=n ELSE nl:=n*-1;
-    IF (f.x>f.y)and(f.x>f.z) THEN
+    IF (f.x>f.y)AND(f.x>f.z) THEN
       p:=f.x
     ELSE IF f.y>f.z THEN
       p:=f.y
@@ -740,12 +730,12 @@ BEGIN
         f:= f / p;
         IF (p = 1) AND (f.x = 1) AND (f.y = 1) AND (f.z = 1) THEN BEGIN
             Result := cl;
-          exit;
+          EXIT;
         END;
       END
       ELSE BEGIN
         Result := cl;
-        exit;
+        EXIT;
       END;
     END;
     cf:=VecMul(cf,f);
@@ -801,7 +791,146 @@ BEGIN
   END;(*WHILE LOOP *)
 END;
 
- 
+FUNCTION TLightPathRenderThread.Radiance(r:RayRecord;depth:INTEGER):VecRecord;
+VAR
+  id,i,j,tid:INTEGER;
+  obj,s:SphereClass;
+  x,n,f,nl,u,v,w,d:VecRecord;
+  p,r1,r2,r2s,t,m1,ss,cc:real;
+  into:BOOLEAN;
+  RefRay:RayRecord;
+  nc,nt,nnt,ddn,cos2t,q,a,b,c,R0,Re,RP,Tr,TP:real;
+  tDir:VecRecord;
+  EL,sw,su,sv,l,tw,tu,tv:VecRecord;
+  cos_a_max,eps1,eps2,eps2s,cos_a,sin_a,phi,omega:real;
+  cl,cf:VecRecord;
+  E:INTEGER;
+  LPRec:LightPathRecord;
+  tVert:VertexRecord;
+  FUNCTION GetLightPathEvent:VecRecord;
+  VAR
+    i,j:INTEGER;
+    tRay:RayRecord;
+    ts:real;
+  BEGIN
+    result:=ZeroVec;tid:=id;
+    FOR i:=0 TO LPList.LMax DO BEGIN
+      LPRec:=LPList.Ary[i];
+      FOR j:=0 TO LPRec.LPMax DO BEGIN
+        tVert:=LPRec.Ary[j];
+        IF tVert.id=tid THEN continue;//光源だったら飛ばすに変えるべき
+        s:=SphereClass(MSR.spl[tVert.id]);
+        sw:=VecNorm(tVert.p-x);
+        tRay.d:=sw;tRay.o:=x;
+        IF sw*nl<0 THEN continue;//裏側につきぬけないように
+        IF MSR.intersect(tRay,t,id)=FALSE THEN continue;
+        IF id<>tVert.id THEN CONTINUE;//影がある？
+        tr:=VecSQR(s.p-x);//ここが怖いところ。
+        tr:=tVert.rad2/tr;
+        ts:=sw*tVert.n;
+        IF ts<0 THEN ts:=-ts;//球の表裏で変わるので・・・・
+        IF tr>1 THEN BEGIN
+          result:=result+VecMul(f,tVert.cf*ts );
+        END
+        ELSE BEGIN
+          cos_a_max := sqrt(1-tr );
+          omega := 2*PI*(1-cos_a_max);
+          result:=result + VecMul(f,(tVert.cf*ts*omega))*M_1_PI;// 1/pi for brdf
+        END;
+      END;
+    END;
+  END;
+BEGIN
+  LPList.Clear;
+  LPList.GetLigthPath;//////LPL
+//writeln(' DebugY=',DebugY,' DebugX=',DebugX);
+  depth:=0;
+  id:=0;cl:=ZeroVec;cf:=CreateVec(1,1,1);E:=1;
+  WHILE (TRUE) DO BEGIN
+    Inc(depth);
+    IF MSR.intersect(r,t,id)=FALSE THEN BEGIN
+       result:=cl;
+       EXIT;
+    END;
+    obj:=SphereClass(MSR.spl[id]);
+    x:=r.o+r.d*t; n:=VecNorm(x-obj.p); f:=obj.c;
+    IF n*r.d<0 THEN nl:=n ELSE nl:=n*-1;
+    IF (f.x>f.y)AND(f.x>f.z) THEN p:=f.x ELSE IF f.y>f.z THEN p:=f.y ELSE p:=f.z;
+    tw:=obj.e*E;
+    cl:=cl+VecMul(cf,tw);
+
+    IF (Depth > 5) OR (p = 0) THEN
+       IF (random < p) THEN BEGIN
+         f:= f / p;
+       END
+       ELSE BEGIN
+         Result := cl;
+         EXIT;
+       END;
+
+    cf:=VecMul(cf,f);
+    CASE obj.refl OF
+      DIFF:BEGIN
+        r1:=M_2PI*random;r2:=random;r2s:=sqrt(r2);
+        w:=nl;
+        IF abs(w.x)>0.01 THEN
+          u:=VecNorm(CreateVec(0,1,0)/w)
+        ELSE BEGIN
+          u:=VecNorm(CreateVec(1,0,0)/w);
+        END;
+        v:=w/u;
+
+        sincos(r1,ss,cc);
+        u:=u*(cc*r2s);v:=v*(ss*r2s);w:=w*(sqrt(1-r2));
+        d:=VecNorm((u+v)+w);
+
+//        EL:=GetNextEvent;
+        EL:=GetLightPathEvent;
+//        EL:=GetFirstLight;
+        tw:=obj.e*e+EL;
+        cl:= cl+VecMul(cf,tw );
+        E:=0;
+        r:=CreateRay(x,d)
+      END;(*DIFF*)
+      SPEC:BEGIN
+        tw:=obj.e*e;
+        cl:=cl+VecMul(cf,tw);
+        E:=1;tv:=n*2*(n*r.d) ;tv:=r.d-tv;
+        r:=CreateRay(x,tv);
+      END;(*SPEC*)
+      REFR:BEGIN
+        tv:=n*2*(n*r.d) ;tv:=r.d-tv;
+        RefRay:=CreateRay(x,tv);
+        into:= (n*nl>0);
+        nc:=1;nt:=1.5; IF into THEN nnt:=nc/nt ELSE nnt:=nt/nc; ddn:=r.d*nl;
+        cos2t:=1-nnt*nnt*(1-ddn*ddn);
+        IF cos2t<0 THEN BEGIN   // Total internal reflection
+          cl:=cl+VecMul(cf,obj.e*E);
+          E:=1;
+          r:=RefRay;
+          continue;
+        END;
+        IF into THEN q:=1 ELSE q:=-1;
+        tdir := VecNorm(r.d*nnt - n*(q*(ddn*nnt+sqrt(cos2t))));
+        IF into THEN Q:=-ddn ELSE Q:=tdir*n;
+        a:=nt-nc; b:=nt+nc; R0:=a*a/(b*b); c := 1-Q;
+        Re:=R0+(1-R0)*c*c*c*c*c;Tr:=1-Re;P:=0.25+0.5*Re;RP:=Re/P;TP:=Tr/(1-P);
+        IF random<p THEN BEGIN// 反射
+          cf:=cf*RP;
+          cl:=cl+VecMul(cf,obj.e*E);
+          E:=1;
+          r:=RefRay;
+        END
+        ELSE BEGIN//屈折
+          cf:=cf*TP;
+          cl:=cl+VecMul(cf,obj.e*E);
+          E:=1;
+          r:=CreateRay(x,tdir);
+        END
+      END;(*REFR*)
+    END;(*CASE*)
+  END;(*WHILE LOOP *)
+END;
 
 BEGIN
 END.

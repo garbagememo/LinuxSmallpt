@@ -1,8 +1,8 @@
-program pXML;
+PROGRAM pXML;
 {$mode objfpc}{$H+}
-uses SysUtils,Classes,uXML,uModel;
+USES SysUtils,Classes,uXML,uModel;
 
-var
+VAR
    SR  : SnapRecord;
    ScR : SceneRecord;
    spl : TList;
@@ -11,15 +11,15 @@ var
 BEGIN
    SR.MakeSnap;
    pSt:='xml';
-   If Not DirectoryExists(pSt) then
-      If Not CreateDir (pSt) Then
-	 Writeln ('Failed to create directory !')
-      else
-	 Writeln ('Created "NewDir" directory');
+   IF NOT DirectoryExists(pSt) THEN
+      IF NOT CreateDir (pSt) THEN
+	 WRITELN ('Failed to create directory !')
+      ELSE
+	 WRITELN ('Created "NewDir" directory');
    Sr.GetNextScene(640,480);
    writeXMLScene(SR.CurSceneRec,pSt+'/'+'teste.xml');
-   writeln(' Write XML');
+   WRITELN(' Write XML');
    ScR:=ReadXMLConf(pSt+'/'+'teste.xml');
-   writeln(' Read XML');
+   WRITELN(' Read XML');
    writeXMLScene(ScR,'testf.xml'); 
-end.
+END.

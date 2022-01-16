@@ -1,9 +1,9 @@
-﻿unit uXML;
+﻿UNIT uXML;
 
 {$mode objfpc}{$H+}
-Interface
+INTERFACE
 
-uses
+USES
   Classes, SysUtils, DOM, XMLRead,XMLWrite,uVect,uModel;
 CONST
   ConfStr='CONF';
@@ -23,36 +23,36 @@ CONST
   colorStr='color';
 
 
-function ReadXMLConf(FN:string):SceneRecord;
-procedure WriteXMLScene(ScR :SceneRecord;fn:string);
+FUNCTION ReadXMLConf(FN:string):SceneRecord;
+PROCEDURE WriteXMLScene(ScR :SceneRecord;fn:string);
 
 IMPLEMENTATION
-function FtoSF(r:real):UnicodeString;
+FUNCTION FtoSF(r:real):UnicodeString;
 BEGIN
   result:=FloatToStrF(r,ffgeneral,16,4);
 END;
 
-procedure SetVectAttribute(var wNode:TDOMNode;v:VecRecord);
+PROCEDURE SetVectAttribute(VAR wNode:TDOMNode;v:VecRecord);
 BEGIN
   TDOMElement(wNode).SetAttribute('x',FtoSF(v.x));
   TDOMElement(wNode).SetAttribute('y',FtoSF(v.y));
   TDOMElement(wNode).SetAttribute('z',FtoSF(v.z));
 END;
-function GetVectAttribute(var wNode:TDOMNode):VecRecord;
-var
+FUNCTION GetVectAttribute(VAR wNode:TDOMNode):VecRecord;
+VAR
   DebugSt:Widestring;
 BEGIN
   Debugst:=TDOMElement(wNode).GetAttribute('x');
-  writeln(' debug st=',Debugst);
+  WRITELN(' debug st=',Debugst);
   result.x:=StrToFloat(TDOMElement(wNode).GetAttribute('x'));
   result.y:=StrToFloat(TDOMElement(wNode).GetAttribute('y'));
   result.z:=StrToFloat(TDOMElement(wNode).GetAttribute('z'));
 END;
 
-procedure CameraToNode(xdoc:TXMLDocument;Cam:CameraRecord;var wNode:TDOMNode);
-var
+PROCEDURE CameraToNode(xdoc:TXMLDocument;Cam:CameraRecord;VAR wNode:TDOMNode);
+VAR
   NodeOrg,NodeDirect:TDOMNode;
-begin
+BEGIN
   TDOMElement(wNode).SetAttribute(WideStr,IntToStr(cam.w) );
   TDOMElement(wNode).SetAttribute(HeightStr,IntToStr(cam.h)  );
   TDOMElement(wNode).SetAttribute(ratioStr,FtoSF(cam.ratio) );
@@ -67,12 +67,12 @@ begin
   wNode.AppendChild(NodeDirect);       // 子ノードをそれぞれの親ノードに挿入する
 
  
-end;
+END;
 
-procedure SphereToNode(xdoc:TXMLDocument;sp:SphereClass;var wNode:TDOMNode;i:integer);
-var
+PROCEDURE SphereToNode(xdoc:TXMLDocument;sp:SphereClass;VAR wNode:TDOMNode;i:INTEGER);
+VAR
   NodePos,NodeEmit,NodeColor:TDOMnode;
-begin
+BEGIN
   TDOMElement(wNode).SetAttribute('id', IntToStr(i));       // 親ノードを示す属性を作成する
   TDOMELement(wNode).SetAttribute(RadiusStr,FtoSF(sp.rad) );
   TDOMElement(wNode).SetAttribute(RefTypeStr,RefToStr(sp.refl) );
@@ -88,15 +88,15 @@ begin
   NodeColor:=xdoc.CreateElement(ColorStr);
   SetVectAttribute(NodeColor,sp.c);
   wNode.AppendChild(NodeColor);
-end;
+END;
 
-procedure WriteXMLScene(ScR :SceneRecord;fn:string);
-var
+PROCEDURE WriteXMLScene(ScR :SceneRecord;fn:string);
+VAR
   xdoc: TXMLDocument;            // 文書を格納する変数
   RootNode, parentNode: TDOMNode;// ノードを格納する変数
   sp:SphereClass;
-  i:integer;
-begin
+  i:INTEGER;
+BEGIN
   //文書を作成する
   xdoc := TXMLDocument.create;
 
@@ -108,25 +108,25 @@ begin
   RootNode.AppendChild(ParentNode);
   CameraToNode(xdoc,ScR.cam,parentNode);
 
-  for i:=0 to ScR.spl.count-1 do begin
+  FOR i:=0 TO ScR.spl.count-1 DO BEGIN
  //   RootNode:=xdoc.DocumentElement;
     parentNode:=xdoc.CreateElement(SphereStr);
     RootNode.AppendChild(ParentNode);
     sp:=SphereClass(ScR.spl[i]);
     SphereToNode(xdoc,sp,parentNode,i);
-  end;
+  END;
   writeXMLFile(xDoc,FN);                     // XML に書く
   Xdoc.free;                                 // メモリを解放する
-end;
+END;
 
 
-procedure WriteVec(v:VecRecord);
-begin
-  Writeln('x=',FtoSF(v.x),' y=',FtoSF(v.y),' z=',FtoSF(v.z) );
-end;
+PROCEDURE WriteVec(v:VecRecord);
+BEGIN
+  WRITELN('x=',FtoSF(v.x),' y=',FtoSF(v.y),' z=',FtoSF(v.z) );
+END;
 
-function ReadXMLConf(FN:string):SceneRecord;
-var
+FUNCTION ReadXMLConf(FN:string):SceneRecord;
+VAR
    Doc	     : TXMLDocument;
    Child     : TDOMNode;
    wNode     : TDOMNode;
@@ -136,28 +136,28 @@ var
    ref	     : RefType;
    spr	     : TList;
    cam	     : CameraRecord;
-   w,h	     : integer;
+   w,h	     : INTEGER;
    ratio,dist: real;
    o,d	     : VecRecord;
-begin
+BEGIN
    ReadXMLFile(Doc,FN);
    spr:=TList.Create;
 
    Child:=Doc.FirstChild.FirstChild;
-   while Assigned(Child) do begin
-      if (Child.NodeName=SphereStr) or (Child.NodeName=CameraStr) THEN BREAK;
+   WHILE Assigned(Child) DO BEGIN
+      IF (Child.NodeName=SphereStr) OR (Child.NodeName=CameraStr) THEN BREAK;
       Child:=Child.NextSibling;
-   end;
+   END;
 
-   while Assigned(Child) do begin
-      IF Child.NodeName=SphereStr THEN begin
+   WHILE Assigned(Child) DO BEGIN
+      IF Child.NodeName=SphereStr THEN BEGIN
 	 r:=StrToFloat(TDOMElement(Child).GetAttribute(RadiusStr));
 	 ref:=StrToRef(TDOMElement(Child).GetAttribute(RefTypeStr));
 	 wNode:=Child.FirstChild;
-	 while Assigned(wNode) do begin
-	    if wNode.NodeName=positionStr then begin
+	 WHILE Assigned(wNode) DO BEGIN
+	    IF wNode.NodeName=positionStr THEN BEGIN
 	       p:=GetVectAttribute(wNode);
-	    end;
+	    END;
 	    IF wNode.NodeName=emittionStr THEN BEGIN
 	       e:=GetVectAttribute(wNode);
 	    END;
@@ -165,7 +165,7 @@ begin
 	       c:=GetVectAttribute(wNode);
 	    END;
 	    wNode:=wNode.NextSibling;
-	 end;
+	 END;
 	 spr.add(SphereClass.Create(r,p,e,c,ref));
       END;(*Sphere*)
       IF Child.NodeName=CameraStr THEN BEGIN
@@ -174,10 +174,10 @@ begin
 	 w:=StrToInt(TDOMElement(Child).GetAttribute(WideStr));
 	 h:=StrToInt(TDOMElement(Child).GetAttribute(HeightStr));
 	 wNode:=Child.FirstChild;
-	 while Assigned(wNode) do begin
-	    if wNode.NodeName=OrgStr then begin
+	 WHILE Assigned(wNode) DO BEGIN
+	    IF wNode.NodeName=OrgStr THEN BEGIN
 	       o:=GetVectAttribute(wNode);
-	    end;
+	    END;
 	    IF wNode.NodeName=directStr THEN BEGIN
 	       d:=GetVectAttribute(wNode);
 	    END;
@@ -186,10 +186,10 @@ begin
 	 cam.Setup(o,d,w,h,ratio,dist);
       END;
       Child:=Child.NextSibling;
-   end;
+   END;
    result.spl:=spr;
    result.cam:=cam;
-end;
+END;
 
 BEGIN
 END.

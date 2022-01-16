@@ -3,71 +3,115 @@ UNIT uModel;
 {$INLINE ON}
 {$modeswitch advancedrecords}
 INTERFACE
-uses SysUtils,Classes,uVect;
+USES SysUtils,Classes,uVect,math;
 
 
-const
+CONST
   eps            = 1e-4;
   INF            = 1e20;
   M_1_PI         = 1/pi;
   M_2PI          = 2*pi;
   DefaultSamples = 16;
-type
+TYPE
+
+  VertexRecord=RECORD
+    cf:VecRecord;
+    p,n:VecRecord;
+    rad2:real;
+    id:INTEGER;
+  //omega,ts,tr,preTR,preRad2:real;//debug
+  END;
+
   SphereClass=CLASS
     rad,rad2:real;       //radius, radius^2
     p,e,c:VecRecord;// position. emission,color
     refl:RefType;
-    constructor Create(rad_:real;p_,e_,c_:VecRecord;refl_:RefType);
-    function intersect(const r:RayRecord):real;
+    isLight:BOOLEAN;
+    CONSTRUCTOR Create(rad_:real;p_,e_,c_:VecRecord;refl_:RefType);
+    FUNCTION intersect(CONST r:RayRecord):real;
   END;
-  CameraRecord=Record
+
+  CameraRecord=RECORD
     o,d,cx,cy : VecRecord;
     dist      : real;
-    w,h       : integer;
+    w,h       : INTEGER;
     ratio     : real;
-    samples   : integer;
-    procedure Setup(o_,d_: VecRecord;w_,h_:integer;ratio_,dist_:real);
-    procedure SetSamples(sam :integer);
-    function Ray(x,y,sx,sy : integer):RayRecord;
+    samples   : INTEGER;
+    PROCEDURE Setup(o_,d_: VecRecord;w_,h_:INTEGER;ratio_,dist_:real);
+    PROCEDURE SetSamples(sam :INTEGER);
+    FUNCTION Ray(x,y,sx,sy : INTEGER):RayRecord;
   END;
-  SceneRecord=
-    RECORD
+
+  SceneRecord=RECORD
     SceneName : string;
     spl       : TList;
     cam       : CameraRecord;
-  end;
+    FUNCTION Intersect(CONST r:RayRecord;VAR t:real; VAR id:INTEGER):BOOLEAN;
+    FUNCTION GenLight(LightID:INTEGER):VertexRecord;
+  END;
 
-  SceneListRecord=
-    RECORD
-       MaxIndex : integer;
-       SrA      : Array[0..50] of SceneRecord;
-       procedure InitScene(w,h:integer);
-       function CopyScene(id,w,h :integer):SceneRecord;
+  SceneListRecord=RECORD
+       MaxIndex : INTEGER;
+       SrA      : ARRAY[0..50] OF SceneRecord;
+       PROCEDURE InitScene(w,h:INTEGER);
+       FUNCTION CopyScene(id,w,h :INTEGER):SceneRecord;
     END;
 
   SnapRecord = RECORD
      SnapList: TList;
-     SceneIndex	     : integer;
+     SceneIndex	     : INTEGER;
      CurSceneRec     : SceneRecord;
-     procedure MakeSnap;
-     function CopySnap(id:integer):TList;
-     function CopyCamera(id,w,h:integer):CameraRecord;
-     function GetNextScene(w,h:integer):boolean;
+     PROCEDURE MakeSnap;
+     FUNCTION CopySnap(id:INTEGER):TList;
+     FUNCTION CopyCamera(id,w,h:INTEGER):CameraRecord;
+     FUNCTION GetNextScene(w,h:INTEGER):BOOLEAN;
   END;
 
-var
+VAR
   SR:SnapRecord;
   SLR:SceneListRecord;
 
 IMPLEMENTATION
+FUNCTION SceneRecord.Intersect(CONST r:RayRecord;VAR t:real; VAR id:INTEGER):BOOLEAN;
+VAR
+  d:real;
+  i:INTEGER;
+BEGIN
+  t:=INF;
+  FOR i:=0 TO spl.count-1 DO BEGIN
+    d:=SphereClass(spl[i]).intersect(r);
+    IF d<t THEN BEGIN
+      t:=d;
+      id:=i;
+    END;
+  END;
+  result:=(t<inf);
+END;
 
-procedure SceneListRecord.InitScene(w,h:integer);
-var
-   i:integer;
+FUNCTION SceneRecord.GenLight(LightID:INTEGER):VertexRecord;
+VAR
+  s:SphereClass;
+  p,t,st:real;
+  n:VecRecord;
+BEGIN
+  s:=SphereClass(spl[LightID]);
+  result.cf:=s.e;
+  p:=2.0*PI*random;t:=2.0*arccos(sqrt(1.0-random));
+  st:=sin(t);
+  result.n:=VecNorm(CreateVec(cos(p)*st,cos(t),sin(p)*st) );
+  result.p:=s.p+result.n*s.rad;
+  result.rad2:=s.rad2;
+  result.id:=LightID;
+END;
+
+
+PROCEDURE SceneListRecord.InitScene(w,h:INTEGER);
+VAR
+   i:INTEGER;
    ScList:TList;
   Cen,C,TC,SCC:VecRecord;
   R,T,D,Z:real;
-begin
+BEGIN
    MaxIndex:=-1;
    Inc(MaxIndex);
 
@@ -299,22 +343,22 @@ scc:=CreateVec(1,1,1)*0.7;
   SrA[MaxIndex].Cam.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),w,h,0.5135,140);
 
 
-end;
+END;
 
-function SceneListRecord.CopyScene(id,w,h:integer):SceneRecord;
-begin
+FUNCTION SceneListRecord.CopyScene(id,w,h:INTEGER):SceneRecord;
+BEGIN
    result:=SrA[id];
    result.cam.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),w,h,0.5135,140);
-end;
+END;
 
-procedure SnapRecord.MakeSnap;
-var
-  i,j,k   : integer;
+PROCEDURE SnapRecord.MakeSnap;
+VAR
+  i,j,k   : INTEGER;
   r,f     : real;
-  ef      : array[0..5] of real;
-  bc      : array[0..5] of VecRecord;
+  ef      : ARRAY[0..5] OF real;
+  bc      : ARRAY[0..5] OF VecRecord;
    ScList : TList;
-begin
+BEGIN
   SnapList:=TList.Create;
   bc[0]:=CreateVec(1.00,0.50,0.50);
   bc[1]:=CreateVec(0.75,0.50,0.75);
@@ -322,10 +366,10 @@ begin
   bc[3]:=CreateVec(0.50,0.75,0.75);
   bc[4]:=CreateVec(0.50,1.00,0.50);
   bc[5]:=CreateVec(0.75,0.75,0.50);
-  for i:=0 to 5 do begin
-    for k:=0 to 5 do ef[k]:=0;
+  FOR i:=0 TO 5 DO BEGIN
+    FOR k:=0 TO 5 DO ef[k]:=0;
     ef[i]:=3;
-    for j:=0 to 20 do begin
+    FOR j:=0 TO 20 DO BEGIN
       f:=1-abs(j*0.1-1);
       ScList:=TList.Create;
 R:=50;
@@ -341,52 +385,52 @@ R:=14;
       ScList.Add(SphereClass.Create(R,CreateVec( 34.6,R, 20),bc[5]*ef[5]*f,bc[5],DIFF));
 
       SnapList.Add(ScList);
-    end;
-  end;
+    END;
+  END;
   SceneIndex:=0;
-end;
-function SnapRecord.GetNextScene(w,h:integer):boolean;
-begin
+END;
+FUNCTION SnapRecord.GetNextScene(w,h:INTEGER):BOOLEAN;
+BEGIN
   IF Assigned(SnapList)=FALSE THEN BEGIN
-    result:=false;
-    exit;
+    result:=FALSE;
+    EXIT;
   END;
   IF SnapList.Count<=SceneIndex THEN BEGIN
-    result:=false;
-     exit;
-  end;
+    result:=FALSE;
+     EXIT;
+  END;
    CurSceneRec.spl:=CopySnap(SceneIndex);
    CurSceneRec.cam:=CopyCamera(SceneIndex,w,h);
    Inc(SceneIndex);
-end;
+END;
 
-function SnapRecord.CopySnap(id:integer):TList;
+FUNCTION SnapRecord.CopySnap(id:INTEGER):TList;
 BEGIN
   result:=TList(SnapList[id]);
 END;
-function SnapRecord.CopyCamera(id,w,h:integer):CameraRecord;
-var
+FUNCTION SnapRecord.CopyCamera(id,w,h:INTEGER):CameraRecord;
+VAR
   tCam:CameraRecord;
-begin
+BEGIN
   tCam.Setup( CreateVec(0, 300, 0),VecNorm(CreateVec(0,-1,0) ),w,h,0.5135,140);
   result:=tCam;
-end;
+END;
 
-procedure CameraRecord.Setup(o_,d_:VecRecord;w_,h_:integer;ratio_,dist_:real);
-begin
+PROCEDURE CameraRecord.Setup(o_,d_:VecRecord;w_,h_:INTEGER;ratio_,dist_:real);
+BEGIN
   ratio:=ratio_;dist:=dist_;w:=w_;h:=h_;
   o:=o_;d:=VecNorm(d_);
   cx:=CreateVec(ratio*w_/h_,0,0);
   cy:=VecNorm(cx/d_)*ratio;
    samples:=DefaultSamples;
-end;
+END;
 
-procedure CameraRecord.SetSamples(sam :integer );
-begin
+PROCEDURE CameraRecord.SetSamples(sam :INTEGER );
+BEGIN
    samples:=sam;
-end;
+END;
 
-function CameraRecord.Ray(x,y,sx,sy:integer):RayRecord;
+FUNCTION CameraRecord.Ray(x,y,sx,sy:INTEGER):RayRecord;
 VAR
   r1,r2,dx,dy:real;
   td:VecRecord;
@@ -401,12 +445,13 @@ BEGIN
   result.d := td;
 END;
 
-constructor SphereClass.Create(rad_:real;p_,e_,c_:VecRecord;refl_:RefType);
+CONSTRUCTOR SphereClass.Create(rad_:real;p_,e_,c_:VecRecord;refl_:RefType);
 BEGIN
   rad:=rad_;p:=p_;e:=e_;c:=c_;refl:=refl_;rad2:=rad*rad;
+  IF VecLen(e)>0 THEN isLight:=TRUE ELSE isLight:=FALSE;
 END;
-function SphereClass.intersect(const r:RayRecord):real;
-var
+FUNCTION SphereClass.intersect(CONST r:RayRecord):real;
+VAR
   op:VecRecord;
   t,b,det:real;
 BEGIN

@@ -12,7 +12,8 @@
       <Scaled Value="True"/>
       <ResourceType Value="res"/>
     </General>
-    <MacroValues Count="1">
+    <MacroValues Count="2">
+      <Macro1 Name="LCLWidgetType" Value="win32"/>
       <Macro3 Name="LCLWidgetType" Value="qt5"/>
     </MacroValues>
     <BuildModes Count="1">
@@ -58,7 +59,7 @@
       <Filename Value="spt"/>
     </Target>
     <SearchPaths>
-      <UnitOutputDirectory Value="/home/average/work/fpc/imgtest/out"/>
+      <UnitOutputDirectory Value="D:/FPC/src/LinuxSmallptv2/out"/>
     </SearchPaths>
     <CodeGeneration>
       <Optimizations>
